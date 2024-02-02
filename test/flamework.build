@@ -1,0 +1,98 @@
+{
+	"version": 1,
+	"flameworkVersion": "1.1.0",
+	"identifiers": {
+		"@rbxts/shared-component-flamework:out/src/shared-component@SharedComponent": "@rbxts/shared-component-flamework:src/shared-component@SharedComponent",
+		"@rbxts/shared-component-flamework:out/src/shared-component-handler@SharedComponentHandler": "@rbxts/shared-component-flamework:src/shared-component-handler@SharedComponentHandler",
+		"@rbxts/shared-component-flamework:out/test/src/shared/components/sharedComponent@TestSharedComponent": "@rbxts/shared-component-flamework:test/src/shared/components/sharedComponent@TestSharedComponent",
+		"@rbxts/shared-component-flamework:out/src/shared-component-handler@onSetupSharedComponent": "@rbxts/shared-component-flamework:src/shared-component-handler@onSetupSharedComponent",
+		"@rbxts/shared-component-flamework:out/test/src/shared/components/sharedComponent@AT": "@rbxts/shared-component-flamework:test/src/shared/components/sharedComponent@AT",
+		"@rbxts/shared-component-flamework:out/test/src/shared/components/sharedComponent@TestSharedComponent2": "@rbxts/shared-component-flamework:test/src/shared/components/sharedComponent@TestSharedComponent2",
+		"@rbxts/shared-component-flamework:out/src/shared-component@ISharedComponent": "@rbxts/shared-component-flamework:src/shared-component@ISharedComponent",
+		"@rbxts/shared-component-flamework:out/src/source/shared-component@SharedComponent": "@rbxts/shared-component-flamework:src/source/shared-component@SharedComponent",
+		"@rbxts/shared-component-flamework:out/src/source/shared-component-handler@SharedComponentHandler": "@rbxts/shared-component-flamework:src/source/shared-component-handler@SharedComponentHandler",
+		"@rbxts/shared-component-flamework:out/src/source/shared-component-handler@onSetupSharedComponent": "@rbxts/shared-component-flamework:src/source/shared-component-handler@onSetupSharedComponent"
+	},
+	"metadata": {},
+	"identifierPrefix": "@rbxts/shared-component-flamework",
+	"classes": [
+		{
+			"filePath": "out\\src\\shared-component.lua",
+			"internalId": "@rbxts/shared-component-flamework:src/shared-component@SharedComponent",
+			"decorators": [
+				{
+					"internalId": "$c:components@Component",
+					"name": "Component"
+				}
+			]
+		},
+		{
+			"filePath": "out\\src\\shared-component-handler.lua",
+			"internalId": "@rbxts/shared-component-flamework:src/shared-component-handler@SharedComponentHandler",
+			"decorators": [
+				{
+					"internalId": "$:flamework@Service",
+					"name": "Service"
+				},
+				{
+					"internalId": "$:flamework@Controller",
+					"name": "Controller"
+				}
+			]
+		},
+		{
+			"filePath": "out\\test\\src\\shared\\components\\sharedComponent.lua",
+			"internalId": "@rbxts/shared-component-flamework:test/src/shared/components/sharedComponent@TestSharedComponent",
+			"decorators": [
+				{
+					"internalId": "$c:components@Component",
+					"name": "Component"
+				}
+			]
+		},
+		{
+			"filePath": "out\\test\\src\\shared\\components\\sharedComponent.lua",
+			"internalId": "@rbxts/shared-component-flamework:test/src/shared/components/sharedComponent@AT",
+			"decorators": [
+				{
+					"internalId": "$c:components@Component",
+					"name": "Component"
+				}
+			]
+		},
+		{
+			"filePath": "out\\test\\src\\shared\\components\\sharedComponent.lua",
+			"internalId": "@rbxts/shared-component-flamework:test/src/shared/components/sharedComponent@TestSharedComponent2",
+			"decorators": [
+				{
+					"internalId": "$c:components@Component",
+					"name": "Component"
+				}
+			]
+		},
+		{
+			"filePath": "out\\src\\source\\shared-component.lua",
+			"internalId": "@rbxts/shared-component-flamework:src/source/shared-component@SharedComponent",
+			"decorators": [
+				{
+					"internalId": "$c:components@Component",
+					"name": "Component"
+				}
+			]
+		},
+		{
+			"filePath": "out\\src\\source\\shared-component-handler.lua",
+			"internalId": "@rbxts/shared-component-flamework:src/source/shared-component-handler@SharedComponentHandler",
+			"decorators": [
+				{
+					"internalId": "@rbxts/shared-component-flamework:flamework@Service",
+					"name": "Service"
+				},
+				{
+					"internalId": "@rbxts/shared-component-flamework:flamework@Controller",
+					"name": "Controller"
+				}
+			]
+		}
+	]
+}
