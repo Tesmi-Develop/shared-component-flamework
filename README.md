@@ -43,7 +43,7 @@ export class MoneyStorageComponent extends SharedComponent<State> implements OnS
 	}
 }
 
-// -->> Paternus with a shared superclass <<--
+// -->> Patern with a shared superclass <<--
 // shared
 interface State {
 	value: number;
