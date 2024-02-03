@@ -65,6 +65,10 @@ export class SharedComponentHandler implements OnInit {
 		RunService.IsClient() && this.clientSetup();
 	}
 
+	public AttachReflexDevTools() {
+		rootProducer.applyMiddleware(devToolMiddleware);
+	}
+
 	private clientSetup() {
 		this.receiver = createBroadcastReceiver({
 			start: () => {
@@ -80,7 +84,7 @@ export class SharedComponentHandler implements OnInit {
 			this.addNewInstance(instance, metadata, id);
 		});
 
-		rootProducer.applyMiddleware(this.receiver.middleware, devToolMiddleware);
+		rootProducer.applyMiddleware(this.receiver.middleware);
 	}
 
 	private serverSetup() {
