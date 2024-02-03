@@ -12,7 +12,9 @@ export const remotes = createRemotes({
 		),
 	),
 	_start: remote<Server, []>(),
-	_getInstanceId: remote<Server, [instance: Instance, metadata: string]>(t.Instance, t.string),
+	_getInstanceId: remote<Server, [instance: Instance, metadata: string]>(t.Instance, t.string).returns<
+		string | undefined
+	>(t.union(t.string, t.nil)),
 	_reciveInstanceId: remote<Client, [instance: Instance, metadata: string, id: string]>(
 		t.Instance,
 		t.string,

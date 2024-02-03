@@ -8,10 +8,13 @@
 		"@rbxts/shared-component-flamework:out/shared-component@ISharedComponent": "@rbxts/shared-component-flamework:shared-component@ISharedComponent",
 		"@rbxts/shared-component-flamework:out/source/shared-component@SharedComponent": "@rbxts/shared-component-flamework:source/shared-component@SharedComponent",
 		"@rbxts/shared-component-flamework:out/source/shared-component-handler@SharedComponentHandler": "@rbxts/shared-component-flamework:source/shared-component-handler@SharedComponentHandler",
-		"@rbxts/shared-component-flamework:out/source/shared-component-handler@onSetupSharedComponent": "@rbxts/shared-component-flamework:source/shared-component-handler@onSetupSharedComponent"
+		"@rbxts/shared-component-flamework:out/source/shared-component-handler@onSetupSharedComponent": "@rbxts/shared-component-flamework:source/shared-component-handler@onSetupSharedComponent",
+		"@rbxts/shared-components-flamework:out/source/shared-component@SharedComponent": "@rbxts/shared-components-flamework:source/shared-component@SharedComponent",
+		"@rbxts/shared-components-flamework:out/source/shared-component-handler@SharedComponentHandler": "@rbxts/shared-components-flamework:source/shared-component-handler@SharedComponentHandler",
+		"@rbxts/shared-components-flamework:out/source/shared-component-handler@onSetupSharedComponent": "@rbxts/shared-components-flamework:source/shared-component-handler@onSetupSharedComponent"
 	},
 	"metadata": {},
-	"identifierPrefix": "@rbxts/shared-component-flamework",
+	"identifierPrefix": "@rbxts/shared-components-flamework",
 	"classes": [
 		{
 			"filePath": "out\\shared-component.lua",
@@ -50,6 +53,30 @@
 		{
 			"filePath": "out\\source\\shared-component-handler.lua",
 			"internalId": "@rbxts/shared-component-flamework:source/shared-component-handler@SharedComponentHandler",
+			"decorators": [
+				{
+					"internalId": "$:flamework@Service",
+					"name": "Service"
+				},
+				{
+					"internalId": "$:flamework@Controller",
+					"name": "Controller"
+				}
+			]
+		},
+		{
+			"filePath": "out\\source\\shared-component.lua",
+			"internalId": "@rbxts/shared-components-flamework:source/shared-component@SharedComponent",
+			"decorators": [
+				{
+					"internalId": "$c:components@Component",
+					"name": "Component"
+				}
+			]
+		},
+		{
+			"filePath": "out\\source\\shared-component-handler.lua",
+			"internalId": "@rbxts/shared-components-flamework:source/shared-component-handler@SharedComponentHandler",
 			"decorators": [
 				{
 					"internalId": "$:flamework@Service",

@@ -1,15 +1,40 @@
-import { Controller, Dependency, Modding, OnInit, Reflect, Service } from "@flamework/core";
-import { BroadcastReceiver, Broadcaster, createBroadcastReceiver, createBroadcaster } from "@rbxts/reflex";
-import { RunService, Workspace } from "@rbxts/services";
+import { Controller, Modding, OnInit, Reflect, Service } from "@flamework/core";
+import {
+	BroadcastReceiver,
+	Broadcaster,
+	ProducerMiddleware,
+	createBroadcastReceiver,
+	createBroadcaster,
+} from "@rbxts/reflex";
+import { ReplicatedStorage, RunService } from "@rbxts/services";
 import { Slices } from "../state/slices";
 import { remotes } from "../remotes";
 import { rootProducer } from "../state/rootProducer";
 import { OnlyServer } from "./decorators/only-server";
-import { CreateGeneratorId } from "../utilities";
+import { CreateGeneratorId, logAssert, logWarning } from "../utilities";
 import { Component } from "@flamework/components";
 import { SharedComponent } from "./shared-component";
 import { Constructor } from "@flamework/core/out/utility";
-import { Signal } from "@rbxts/beacon";
+import { SelectListSharedComponentMetadata, SelectSharedComponentMetadata } from "../state/slices/selectors";
+
+const event = ReplicatedStorage.FindFirstChild("REFLEX_DEVTOOLS") as RemoteEvent;
+
+interface ConstructorWithIndex extends Constructor {
+	__index: object;
+}
+
+const devToolMiddleware: ProducerMiddleware = () => {
+	return (nextAction, actionName) => {
+		return (...args) => {
+			const state = nextAction(...args);
+			if (RunService.IsStudio() && event) {
+				event.FireServer({ name: actionName, args: [...args], state });
+			}
+
+			return state;
+		};
+	};
+};
 
 export interface onSetupSharedComponent {
 	onSetup(): void;
@@ -27,22 +52,15 @@ export class SharedComponentHandler implements OnInit {
 	private receiver!: BroadcastReceiver<typeof Slices>;
 	private broadcaster!: Broadcaster;
 	private instances = new Map<Metadata, Map<Instance, string>>();
+	private sharedComponents = new Map<Constructor, object>();
 	private idGenerator = CreateGeneratorId(true);
-	private isReplicatedMetadata = false;
-	private onReplicatedData = new Signal<[]>();
 
 	/**
 	 * @deprecated
 	 * @hidden
 	 */
-	public async onInit() {
-		Modding.onListenerAdded<onSetupSharedComponent>((component) => {
-			if (RunService.IsClient() && !this.isReplicatedMetadata) {
-				this.onReplicatedData.Wait();
-			}
-			component.onSetup();
-		});
-
+	public onInit() {
+		this.registerySharedComponents();
 		RunService.IsServer() && this.serverSetup();
 		RunService.IsClient() && this.clientSetup();
 	}
@@ -54,20 +72,46 @@ export class SharedComponentHandler implements OnInit {
 			},
 		});
 
-		const disconnect = rootProducer.subscribe(
-			(state) => state.replication.ComponetMetadatas,
-			() => {
-				this.isReplicatedMetadata = true;
-				this.onReplicatedData.Fire();
-				disconnect();
-			},
-		);
-
-		remotes._dispatch.connect((Actions) => {
-			this.receiver.dispatch(Actions);
+		remotes._dispatch.connect((actions) => {
+			this.receiver.dispatch(actions);
 		});
 
-		rootProducer.applyMiddleware(this.receiver.middleware);
+		remotes._reciveInstanceId.connect((instance, metadata, id) => {
+			this.addNewInstance(instance, metadata, id);
+		});
+
+		rootProducer.applyMiddleware(this.receiver.middleware, devToolMiddleware);
+	}
+
+	private serverSetup() {
+		this.broadcaster = createBroadcaster({
+			producers: Slices,
+
+			dispatch: (player, actions) => {
+				remotes._dispatch.fire(player, actions);
+			},
+		});
+
+		rootProducer.applyMiddleware(this.broadcaster.middleware);
+		remotes._start.connect((player) => this.broadcaster.start(player));
+
+		remotes._getInstanceId.onRequest((player, instance, metadata) => {
+			return this.instances.get(metadata)?.get(instance);
+		});
+	}
+
+	public async GetInstanceById(instance: Instance, metadata: Metadata) {
+		if (RunService.IsServer()) {
+			return this.instances.get(metadata)?.get(instance);
+		}
+
+		if (this.instances.get(metadata)?.has(instance)) {
+			return this.instances.get(metadata)?.get(instance);
+		}
+
+		const result = await remotes._getInstanceId(instance, metadata);
+		result && this.addNewInstance(instance, metadata, result);
+		return result;
 	}
 
 	private addNewInstance(instance: Instance, metadata: Metadata, id: string) {
@@ -81,50 +125,64 @@ export class SharedComponentHandler implements OnInit {
 		instances.set(instance, id);
 	}
 
+	/**
+	 * @server
+	 */
 	@OnlyServer
 	public AddNewInstance(instance: Instance, metadata: Metadata, id: string) {
 		this.addNewInstance(instance, metadata, id);
 		remotes._reciveInstanceId.fireAll(instance, metadata, id);
 	}
 
-	public GetSharedComponentMetadataId(component: SharedComponent<object>) {
-		const identifier = Reflect.getMetadata(getmetatable(component) as object, "identifier") as string;
-		if (!identifier) return;
+	public GetSharedComponentMetadataId(component: Constructor) {
+		const identifier = Reflect.getMetadata(component as object, "identifier") as string;
+		logAssert(identifier, "Failed to get identifier");
 
-		return rootProducer.getState().replication.ComponetMetadatas.get(identifier);
-	}
-
-	private serverSetup() {
-		this.registerySharedComponents();
-		this.broadcaster = createBroadcaster({
-			producers: Slices,
-
-			dispatch: (player, actions) => {
-				remotes._dispatch.fire(player, actions);
-			},
-		});
-
-		rootProducer.applyMiddleware(this.broadcaster.middleware);
-		remotes._start.connect((player) => this.broadcaster.start(player));
-
-		remotes._getInstanceId.connect((player, instance, metadata) => {
-			const id = this.instances.get(metadata)?.get(instance);
-			id && remotes._reciveInstanceId.fire(player, instance, metadata, id);
-		});
+		return rootProducer.getState(SelectSharedComponentMetadata(identifier));
 	}
 
 	private instanceOfSharedComponent(obj: object) {
-		let foundObj = getmetatable(obj) as { __index: object };
+		const metatable = getmetatable(obj) as ConstructorWithIndex;
+		return metatable.__index === SharedComponent;
+	}
 
-		while (foundObj) {
-			if (foundObj.__index === (SharedComponent as object)) return true;
-			foundObj = getmetatable(foundObj.__index) as { __index: object };
+	/**
+	 * @hidden
+	 */
+	public RegisteryDescendantSharedComponent(component: object) {
+		const sharedClass = this.getSharedComponent(component);
+		logAssert(sharedClass, "Failed to get shared component");
+
+		if (this.sharedComponents.has(sharedClass)) {
+			logWarning(
+				`${sharedClass} already has a descendant. The second descendant will have the state of the first descendant `,
+			);
+			return sharedClass;
 		}
 
-		return false;
+		this.sharedComponents.set(sharedClass, component);
+
+		return sharedClass;
+	}
+
+	private getSharedComponent(instance: object) {
+		let currentClass = getmetatable(instance) as ConstructorWithIndex;
+		let previousClass = currentClass;
+
+		while (currentClass && currentClass.__index !== SharedComponent) {
+			previousClass = currentClass;
+			currentClass = getmetatable(currentClass.__index) as ConstructorWithIndex;
+		}
+
+		return previousClass.__index as Constructor;
 	}
 
 	private registerySharedComponents() {
+		const listMetadata = rootProducer.getState(SelectListSharedComponentMetadata);
+		if (RunService.IsClient() && listMetadata.size() > 0) {
+			return;
+		}
+
 		const metadata = new Map<Metadata, string>();
 		const components = Modding.getDecorators<typeof Component>();
 

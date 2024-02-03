@@ -11,10 +11,24 @@
 		"@rbxts/shared-component-flamework:out/src/shared-component@ISharedComponent": "@rbxts/shared-component-flamework:src/shared-component@ISharedComponent",
 		"@rbxts/shared-component-flamework:out/src/source/shared-component@SharedComponent": "@rbxts/shared-component-flamework:src/source/shared-component@SharedComponent",
 		"@rbxts/shared-component-flamework:out/src/source/shared-component-handler@SharedComponentHandler": "@rbxts/shared-component-flamework:src/source/shared-component-handler@SharedComponentHandler",
-		"@rbxts/shared-component-flamework:out/src/source/shared-component-handler@onSetupSharedComponent": "@rbxts/shared-component-flamework:src/source/shared-component-handler@onSetupSharedComponent"
+		"@rbxts/shared-component-flamework:out/src/source/shared-component-handler@onSetupSharedComponent": "@rbxts/shared-component-flamework:src/source/shared-component-handler@onSetupSharedComponent",
+		"@rbxts/shared-components-flamework:out/src/source/shared-component@SharedComponent": "@rbxts/shared-components-flamework:src/source/shared-component@SharedComponent",
+		"@rbxts/shared-components-flamework:out/src/source/shared-component-handler@SharedComponentHandler": "@rbxts/shared-components-flamework:src/source/shared-component-handler@SharedComponentHandler",
+		"@rbxts/shared-components-flamework:out/test/src/shared/components/sharedComponent@MoneyStorageComponent": "@rbxts/shared-components-flamework:test/src/shared/components/sharedComponent@MoneyStorageComponent",
+		"@rbxts/shared-components-flamework:out/src/source/shared-component-handler@onSetupSharedComponent": "@rbxts/shared-components-flamework:src/source/shared-component-handler@onSetupSharedComponent",
+		"@rbxts/shared-components-flamework:out/src/networking@GlobalEvents": "@rbxts/shared-components-flamework:src/networking@GlobalEvents",
+		"@rbxts/shared-components-flamework:out/src/networking@GlobalFunctions": "@rbxts/shared-components-flamework:src/networking@GlobalFunctions",
+		"@rbxts/shared-components-flamework:out/src/source/shared-component-handler@$p:error": "@rbxts/shared-components-flamework:src/source/shared-component-handler@$p:error",
+		"@rbxts/shared-components-flamework:out/test/src/shared/components/sharedComponent@test": "@rbxts/shared-components-flamework:test/src/shared/components/sharedComponent@test",
+		"@rbxts/shared-components-flamework:out/test/src/server/components/ValueStorageComponent@ValueStorageComponent": "@rbxts/shared-components-flamework:test/src/server/components/ValueStorageComponent@ValueStorageComponent",
+		"@rbxts/shared-components-flamework:out/test/src/server/components/ValueStorageComponent@ServerValueStorageComponent": "@rbxts/shared-components-flamework:test/src/server/components/ValueStorageComponent@ServerValueStorageComponent",
+		"@rbxts/shared-components-flamework:out/test/src/shared/components/valueStorageComponent@Value": "@rbxts/shared-components-flamework:test/src/shared/components/valueStorageComponent@Value",
+		"@rbxts/shared-components-flamework:out/test/src/shared/components/valueStorageComponent@ValueStorageComponent": "@rbxts/shared-components-flamework:test/src/shared/components/valueStorageComponent@ValueStorageComponent",
+		"@rbxts/shared-components-flamework:out/test/src/client/components/ValueStorageComponent@ClientValueStorageComponent": "@rbxts/shared-components-flamework:test/src/client/components/ValueStorageComponent@ClientValueStorageComponent",
+		"@rbxts/shared-components-flamework:out/test/src/shared/components/sharedComponent@A": "@rbxts/shared-components-flamework:test/src/shared/components/sharedComponent@A"
 	},
 	"metadata": {},
-	"identifierPrefix": "@rbxts/shared-component-flamework",
+	"identifierPrefix": "@rbxts/shared-components-flamework",
 	"classes": [
 		{
 			"filePath": "out\\src\\shared-component.lua",
@@ -91,6 +105,110 @@
 				{
 					"internalId": "@rbxts/shared-component-flamework:flamework@Controller",
 					"name": "Controller"
+				}
+			]
+		},
+		{
+			"filePath": "out\\src\\source\\shared-component.lua",
+			"internalId": "@rbxts/shared-components-flamework:src/source/shared-component@SharedComponent",
+			"decorators": [
+				{
+					"internalId": "$c:components@Component",
+					"name": "Component"
+				}
+			]
+		},
+		{
+			"filePath": "out\\src\\source\\shared-component-handler.lua",
+			"internalId": "@rbxts/shared-components-flamework:src/source/shared-component-handler@SharedComponentHandler",
+			"decorators": [
+				{
+					"internalId": "@rbxts/shared-components-flamework:flamework@Service",
+					"name": "Service"
+				},
+				{
+					"internalId": "@rbxts/shared-components-flamework:flamework@Controller",
+					"name": "Controller"
+				}
+			]
+		},
+		{
+			"filePath": "out\\test\\src\\shared\\components\\sharedComponent.lua",
+			"internalId": "@rbxts/shared-components-flamework:test/src/shared/components/sharedComponent@MoneyStorageComponent",
+			"decorators": [
+				{
+					"internalId": "$c:components@Component",
+					"name": "Component"
+				}
+			]
+		},
+		{
+			"filePath": "out\\test\\src\\shared\\components\\sharedComponent.lua",
+			"internalId": "@rbxts/shared-components-flamework:test/src/shared/components/sharedComponent@test",
+			"decorators": [
+				{
+					"internalId": "$c:components@Component",
+					"name": "Component"
+				}
+			]
+		},
+		{
+			"filePath": "out\\test\\src\\server\\components\\ValueStorageComponent.lua",
+			"internalId": "@rbxts/shared-components-flamework:test/src/server/components/ValueStorageComponent@ValueStorageComponent",
+			"decorators": [
+				{
+					"internalId": "$c:components@Component",
+					"name": "Component"
+				}
+			]
+		},
+		{
+			"filePath": "out\\test\\src\\server\\components\\ValueStorageComponent.lua",
+			"internalId": "@rbxts/shared-components-flamework:test/src/server/components/ValueStorageComponent@ServerValueStorageComponent",
+			"decorators": [
+				{
+					"internalId": "$c:components@Component",
+					"name": "Component"
+				}
+			]
+		},
+		{
+			"filePath": "out\\test\\src\\shared\\components\\valueStorageComponent.lua",
+			"internalId": "@rbxts/shared-components-flamework:test/src/shared/components/valueStorageComponent@Value",
+			"decorators": [
+				{
+					"internalId": "$c:components@Component",
+					"name": "Component"
+				}
+			]
+		},
+		{
+			"filePath": "out\\test\\src\\shared\\components\\valueStorageComponent.lua",
+			"internalId": "@rbxts/shared-components-flamework:test/src/shared/components/valueStorageComponent@ValueStorageComponent",
+			"decorators": [
+				{
+					"internalId": "$c:components@Component",
+					"name": "Component"
+				}
+			]
+		},
+		{
+			"filePath": "out\\test\\src\\client\\components\\ValueStorageComponent.lua",
+			"internalId": "@rbxts/shared-components-flamework:test/src/client/components/ValueStorageComponent@ClientValueStorageComponent",
+			"decorators": [
+				{
+					"internalId": "$c:components@Component",
+					"name": "Component"
+				}
+			]
+		},
+		{
+			"filePath": "out\\test\\src\\shared\\components\\sharedComponent.lua",
+			"internalId": "@rbxts/shared-components-flamework:test/src/shared/components/sharedComponent@A",
+			"decorators": [
+				{
+					"internalId": "$c:components@Component",
+					"name": "Component"
 				}
 			]
 		}

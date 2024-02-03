@@ -24,7 +24,7 @@ export const replicationSlice = createProducer(initialState, {
 		});
 	},
 
-	ClearInstance: (state, key: string) => {
+	ClearState: (state, key: string) => {
 		return produce(state, (draft) => {
 			draft.ComponentStates.delete(key);
 		});

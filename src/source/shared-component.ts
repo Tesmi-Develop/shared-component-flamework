@@ -1,13 +1,14 @@
 import { BaseComponent, Component } from "@flamework/components";
-import { SharedComponentHandler, onSetupSharedComponent } from "./shared-component-handler";
+import { SharedComponentHandler } from "./shared-component-handler";
 import { Reflect } from "@flamework/core";
 import { WrapSubscriber, Subscriber } from "../types";
 import { RootState, rootProducer } from "../state/rootProducer";
 import Maid from "@rbxts/maid";
 import { RunService } from "@rbxts/services";
-import { CreateGeneratorId } from "../utilities";
+import { CreateGeneratorId, logAssert, logWarning } from "../utilities";
 import { remotes } from "../remotes";
 import { Selector } from "@rbxts/reflex";
+import { Signal } from "@rbxts/beacon";
 
 function CallMethod<T extends Callback>(func: T, context: InferThis<T>, ...parameters: Parameters<T>): ReturnType<T> {
 	return func(context, ...(parameters as unknown[]));
@@ -18,38 +19,46 @@ enum Prefix {
 	Client = "Client",
 }
 
+const IsServer = RunService.IsServer();
+const IsClient = RunService.IsClient();
+
 @Component()
-export abstract class SharedComponent<S extends object, A extends object = {}, I extends Instance = Instance>
-	extends BaseComponent<A, I>
-	implements onSetupSharedComponent
-{
+export abstract class SharedComponent<
+	S extends object,
+	A extends object = {},
+	I extends Instance = Instance,
+> extends BaseComponent<A, I> {
 	private static generatorId = CreateGeneratorId(true);
 	protected abstract state: S;
 	protected previusState!: S;
 	private maid = new Maid();
 	private id!: string;
-	private prefix?: string;
-	private metadataId!: string;
+	private prefix!: string;
+	private metadataId: string;
+	private waitintForReadyState?: Signal<void>;
 
 	constructor(private sharedComponentHandler: SharedComponentHandler) {
 		super();
+
+		const sharedComponent = this.sharedComponentHandler.RegisteryDescendantSharedComponent(this);
+		this.metadataId = this.sharedComponentHandler.GetSharedComponentMetadataId(sharedComponent)!;
+		logAssert(this.metadataId, "Shared component metadata id not found");
+		this.onSetup();
 	}
 
-	/**
-	 * @deprecated
-	 * @hidden
-	 */
-	onSetup() {
-		const id = this.sharedComponentHandler.GetSharedComponentMetadataId(this);
-		assert(id, "Shared component metadata id not found");
-		this.metadataId = id;
-
+	private onSetup() {
 		this.applyId();
-		this.initSubscribers();
 		this.subcribeState();
+		this.initSubscribers();
+
+		RunService.Heartbeat.Once(() => {
+			this.waitintForReadyState?.Fire();
+			this.waitintForReadyState?.Destroy();
+			rootProducer.flush();
+		});
 	}
 
-	public destroy(): void {
+	public destroy() {
 		super.destroy();
 		this.maid.Destroy();
 	}
@@ -60,7 +69,7 @@ export abstract class SharedComponent<S extends object, A extends object = {}, I
 	 * @return {string} the full ID
 	 */
 	public GetFullId(): string {
-		return `${this.prefix ?? ""}-${this.metadataId ?? "-1"}-${this.id ?? "0"}`;
+		return `${this.prefix}-${this.metadataId}-${this.id}`;
 	}
 
 	/**
@@ -81,14 +90,14 @@ export abstract class SharedComponent<S extends object, A extends object = {}, I
 			Disconnect: disconnect,
 
 			OnlyServer: () => {
-				if (!RunService.IsServer()) return disconnect;
+				if (!IsServer) return disconnect;
 				disconnect();
 
 				return disconnect;
 			},
 
 			OnlyClient: () => {
-				if (!RunService.IsClient()) return disconnect;
+				if (!IsClient) return disconnect;
 				disconnect();
 
 				return disconnect;
@@ -99,16 +108,24 @@ export abstract class SharedComponent<S extends object, A extends object = {}, I
 	}
 
 	private changeId(prefix: Prefix, id: string) {
-		this.id && rootProducer.ClearInstance(this.id);
-
+		this.id && this.prefix !== Prefix.Server && rootProducer.ClearState(this.id);
 		this.id = id;
 		this.prefix = prefix;
-		rootProducer.Dispatch(this.GetFullId(), this.state);
+
+		// This method has to be called in the constructor when the state is not ready yet
+		if (!this.state) {
+			return;
+		}
+
+		if (IsServer || (IsClient && prefix === Prefix.Client)) {
+			rootProducer.Dispatch(this.GetFullId(), this.state);
+		}
+
 		rootProducer.flush();
 	}
 
 	private applyId() {
-		if (RunService.IsServer()) {
+		if (IsServer) {
 			const id = SharedComponent.generatorId.Next();
 			this.changeId(Prefix.Server, id);
 			this.sharedComponentHandler.AddNewInstance(this.instance, this.metadataId, id);
@@ -124,7 +141,20 @@ export abstract class SharedComponent<S extends object, A extends object = {}, I
 
 		const id = SharedComponent.generatorId.Next();
 		this.changeId(Prefix.Client, id);
-		remotes._getInstanceId.fire(this.instance, this.metadataId);
+
+		this.sharedComponentHandler.GetInstanceById(this.instance, this.metadataId).then((id) => {
+			if (!id) {
+				logWarning(`Failed to get instance ${id}`);
+				return;
+			}
+
+			this.changeId(Prefix.Server, id);
+		});
+	}
+
+	private waitForReadyState() {
+		this.waitintForReadyState ?? (this.waitintForReadyState = new Signal());
+		this.waitintForReadyState.Wait();
 	}
 
 	private subcribeState() {
@@ -152,15 +182,21 @@ export abstract class SharedComponent<S extends object, A extends object = {}, I
 	}
 
 	private initSubscribers() {
-		const subscribes = Reflect.getMetadata(this, "Subscribes") as Subscriber[];
+		const subscribes = Reflect.getMetadata(this, "Subscribes") as Subscriber<S, unknown>[];
 		if (!subscribes) return;
 
-		subscribes.forEach((subscriber) => {
-			this.maid.GiveTask(
-				rootProducer.subscribe(this.wrapSelector(subscriber.selector), (state, previousState) =>
-					CallMethod(subscriber.callback, this, state as S, previousState as S),
-				),
-			);
+		task.spawn(() => {
+			this.waitForReadyState();
+
+			subscribes.forEach((subscriber) => {
+				this.maid.GiveTask(
+					rootProducer.subscribe<unknown>(
+						this.wrapSelector(subscriber.selector),
+						subscriber.predicate,
+						(state, previousState) => CallMethod(subscriber.callback, this, state as S, previousState as S),
+					),
+				);
+			});
 		});
 	}
 }

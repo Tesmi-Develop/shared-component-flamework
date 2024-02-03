@@ -3,7 +3,7 @@ import { SharedComponent } from "../../source/shared-component";
 import { OnStart } from "@flamework/core";
 import { RunService } from "@rbxts/services";
 import { Action } from "../../source/decorators/action";
-import { Subscribe } from "../../source/decorators/subscribe";
+import { SharedSubscribe } from "../../source/decorators/subscribe";
 
 interface State {
 	money: number;
@@ -20,14 +20,14 @@ export class MoneyStorageComponent extends SharedComponent<State> implements OnS
 	public onStart() {
 		if (RunService.IsServer()) {
 			task.spawn(() => {
-				while (task.wait(10)) {
+				while (task.wait(2)) {
 					this.increateMoney(1);
 				}
 			});
 		}
 	}
 
-	@Subscribe("Client", (state) => state.money)
+	@SharedSubscribe("Client", (state) => state.money)
 	private onChangedMoney(money: number) {
 		print(`new money: ${money}`);
 	}
