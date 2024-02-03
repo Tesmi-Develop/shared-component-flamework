@@ -73,6 +73,15 @@ export abstract class SharedComponent<
 	}
 
 	/**
+	 * Get the state of the object.
+	 *
+	 * @return {S} the state
+	 */
+	public GetState(): S {
+		return this.state as Readonly<S>;
+	}
+
+	/**
 	 * Subscribe to changes in the state and attach a listener.
 	 *
 	 * @param {Selector<S, R>} selector - the selector function
