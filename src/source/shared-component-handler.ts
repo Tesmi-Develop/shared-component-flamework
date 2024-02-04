@@ -52,7 +52,7 @@ export class SharedComponentHandler implements OnInit {
 	private receiver!: BroadcastReceiver<typeof Slices>;
 	private broadcaster!: Broadcaster;
 	private instances = new Map<Metadata, Map<Instance, string>>();
-	private sharedComponents = new Map<Constructor, object>();
+	private sharedComponents = new Map<Constructor, Map<Instance, object>>();
 	private idGenerator = CreateGeneratorId(true);
 
 	/**
@@ -153,18 +153,24 @@ export class SharedComponentHandler implements OnInit {
 	/**
 	 * @hidden
 	 */
-	public RegisteryDescendantSharedComponent(component: object) {
+	public RegisteryDescendantSharedComponent(component: SharedComponent<object>) {
 		const sharedClass = this.getSharedComponent(component);
+		let instances = this.sharedComponents.get(sharedClass);
 		logAssert(sharedClass, "Failed to get shared component");
 
-		if (this.sharedComponents.has(sharedClass)) {
+		if (!instances) {
+			instances = new Map();
+			this.sharedComponents.set(sharedClass, instances);
+		}
+
+		if (instances.has(component.instance)) {
 			logWarning(
 				`${sharedClass} already has a descendant. The second descendant will have the state of the first descendant `,
 			);
 			return sharedClass;
 		}
 
-		this.sharedComponents.set(sharedClass, component);
+		instances.set(component.instance, component);
 
 		return sharedClass;
 	}

@@ -30,7 +30,7 @@ export abstract class SharedComponent<
 > extends BaseComponent<A, I> {
 	private static generatorId = CreateGeneratorId(true);
 	protected abstract state: S;
-	protected previusState!: S;
+	protected previousState!: S;
 	private maid = new Maid();
 	private id!: string;
 	private prefix!: string;
@@ -92,7 +92,7 @@ export abstract class SharedComponent<
 	public Subscribe<R>(
 		selector: Selector<S, R>,
 		listener: (state: R, previousState: R) => void,
-		predicate?: (state: R) => boolean,
+		predicate?: (state: R, previousState: R) => boolean,
 	): WrapSubscriber {
 		const disconnect = rootProducer.subscribe(this.wrapSelector(selector), predicate, listener);
 		const subscriber = {
@@ -148,6 +148,8 @@ export abstract class SharedComponent<
 			}
 		});
 
+		this.maid.GiveTask(disconnect);
+
 		const id = SharedComponent.generatorId.Next();
 		this.changeId(Prefix.Client, id);
 
@@ -167,14 +169,14 @@ export abstract class SharedComponent<
 	}
 
 	private subcribeState() {
-		this.previusState = this.state;
+		this.previousState = this.state;
 
 		this.maid.GiveTask(
 			rootProducer.subscribe(
 				(state) => state.replication.ComponentStates.get(this.GetFullId()),
 				(state, previousState) => {
 					this.state = state as S;
-					this.previusState = previousState as S;
+					this.previousState = previousState as S;
 				},
 			),
 		);

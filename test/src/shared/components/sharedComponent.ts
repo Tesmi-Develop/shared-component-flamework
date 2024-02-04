@@ -21,7 +21,7 @@ export class MoneyStorageComponent extends SharedComponent<State> implements OnS
 		if (RunService.IsServer()) {
 			task.spawn(() => {
 				while (task.wait(2)) {
-					this.increateMoney(1);
+					this.incrementMoney(1);
 				}
 			});
 		}
@@ -33,7 +33,7 @@ export class MoneyStorageComponent extends SharedComponent<State> implements OnS
 	}
 
 	@Action()
-	private increateMoney(money: number) {
+	private incrementMoney(money: number) {
 		return {
 			...this.state,
 			money: this.state.money + money,

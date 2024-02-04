@@ -35,7 +35,7 @@ export class MoneyStorageComponent extends SharedComponent<State> implements OnS
 	}
 
 	@Action()
-	private increateMoney(money: number) {
+	private incrementMoney(money: number) {
 		return {
 			...this.state,
 			money: this.state.money + money,

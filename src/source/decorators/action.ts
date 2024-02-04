@@ -6,8 +6,8 @@ import { rootProducer } from "../../state/rootProducer";
  */
 export const Action = () => {
 	return <S extends object, T extends SharedComponent<S>>(
-		target: T,
-		propertyKey: string,
+		_target: T,
+		_propertyKey: string,
 		descriptor: TypedPropertyDescriptor<(this: T, ...args: unknown[]) => S>,
 	) => {
 		const originalMethod = descriptor.value;
