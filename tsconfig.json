@@ -24,7 +24,11 @@
 		"tsBuildInfoFile": "out/tsconfig.tsbuildinfo",
 		"declaration": true,
 		"plugins": [
-			{ "transform": "rbxts-transformer-flamework" }
+			{ 
+				"transform": "rbxts-transformer-flamework",
+				"$rbxpackmode$": true,
+				"hashPrefix": "$t",
+			}
 		]
 	},
 	"exclude": ["test/**/*", "out/**/*"]

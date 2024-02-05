@@ -1,13 +1,14 @@
 {
   "name": "@rbxts/shared-components-flamework",
-  "version": "1.1.8",
+  "version": "1.1.84",
   "description": "This package will allow you to create shared components that will synchronize between server and client. This package is reflex-based, so it is important to know how to work with it to understand how this package works.",
   "main": "out/init.lua",
   "scripts": {
     "build": "rbxtsc",
     "watch": "rbxtsc -w",
     "test:watch": "rbxtsc -w --type=game -p test -i test/include",
-    "serve": "rojo serve test/default.project.json"
+    "serve": "rojo serve test/default.project.json",
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "flamework",
@@ -22,7 +23,8 @@
   "files": [
     "out",
     "!**/*.tsbuildinfo",
-    "!**/*.spec.lua"
+    "!**/*.spec.lua",
+    "flamework.build"
   ],
   "publishConfig": {
     "access": "public"

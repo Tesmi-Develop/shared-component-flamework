@@ -72,15 +72,15 @@ export class SharedComponentHandler implements OnInit {
 	private clientSetup() {
 		this.receiver = createBroadcastReceiver({
 			start: () => {
-				remotes._start.fire();
+				remotes._shared_component_start.fire();
 			},
 		});
 
-		remotes._dispatch.connect((actions) => {
+		remotes._shared_component_dispatch.connect((actions) => {
 			this.receiver.dispatch(actions);
 		});
 
-		remotes._reciveInstanceId.connect((instance, metadata, id) => {
+		remotes._shared_component_reciveInstanceId.connect((instance, metadata, id) => {
 			this.addNewInstance(instance, metadata, id);
 		});
 
@@ -92,14 +92,14 @@ export class SharedComponentHandler implements OnInit {
 			producers: Slices,
 
 			dispatch: (player, actions) => {
-				remotes._dispatch.fire(player, actions);
+				remotes._shared_component_dispatch.fire(player, actions);
 			},
 		});
 
 		rootProducer.applyMiddleware(this.broadcaster.middleware);
-		remotes._start.connect((player) => this.broadcaster.start(player));
+		remotes._shared_component_start.connect((player) => this.broadcaster.start(player));
 
-		remotes._getInstanceId.onRequest((player, instance, metadata) => {
+		remotes._shared_component_getInstanceId.onRequest((player, instance, metadata) => {
 			return this.instances.get(metadata)?.get(instance);
 		});
 	}
@@ -113,7 +113,7 @@ export class SharedComponentHandler implements OnInit {
 			return this.instances.get(metadata)?.get(instance);
 		}
 
-		const result = await remotes._getInstanceId(instance, metadata);
+		const result = await remotes._shared_component_getInstanceId(instance, metadata);
 		result && this.addNewInstance(instance, metadata, result);
 		return result;
 	}
@@ -135,7 +135,7 @@ export class SharedComponentHandler implements OnInit {
 	@OnlyServer
 	public AddNewInstance(instance: Instance, metadata: Metadata, id: string) {
 		this.addNewInstance(instance, metadata, id);
-		remotes._reciveInstanceId.fireAll(instance, metadata, id);
+		remotes._shared_component_reciveInstanceId.fireAll(instance, metadata, id);
 	}
 
 	public GetSharedComponentMetadataId(component: Constructor) {

@@ -2,47 +2,15 @@
 	"version": 1,
 	"flameworkVersion": "1.1.0",
 	"identifiers": {
-		"@rbxts/shared-component-flamework:out/shared-component@SharedComponent": "@rbxts/shared-component-flamework:shared-component@SharedComponent",
-		"@rbxts/shared-component-flamework:out/shared-component-handler@SharedComponentHandler": "@rbxts/shared-component-flamework:shared-component-handler@SharedComponentHandler",
-		"@rbxts/shared-component-flamework:out/shared-component-handler@onSetupSharedComponent": "@rbxts/shared-component-flamework:shared-component-handler@onSetupSharedComponent",
-		"@rbxts/shared-component-flamework:out/shared-component@ISharedComponent": "@rbxts/shared-component-flamework:shared-component@ISharedComponent",
-		"@rbxts/shared-component-flamework:out/source/shared-component@SharedComponent": "@rbxts/shared-component-flamework:source/shared-component@SharedComponent",
-		"@rbxts/shared-component-flamework:out/source/shared-component-handler@SharedComponentHandler": "@rbxts/shared-component-flamework:source/shared-component-handler@SharedComponentHandler",
-		"@rbxts/shared-component-flamework:out/source/shared-component-handler@onSetupSharedComponent": "@rbxts/shared-component-flamework:source/shared-component-handler@onSetupSharedComponent",
-		"@rbxts/shared-components-flamework:out/source/shared-component@SharedComponent": "@rbxts/shared-components-flamework:source/shared-component@SharedComponent",
-		"@rbxts/shared-components-flamework:out/source/shared-component-handler@SharedComponentHandler": "@rbxts/shared-components-flamework:source/shared-component-handler@SharedComponentHandler",
-		"@rbxts/shared-components-flamework:out/source/shared-component-handler@onSetupSharedComponent": "@rbxts/shared-components-flamework:source/shared-component-handler@onSetupSharedComponent"
+		"@rbxts/shared-components-flamework:out/source/shared-component@SharedComponent": "$t:source/shared-component@SharedComponent",
+		"@rbxts/shared-components-flamework:out/source/shared-component-handler@SharedComponentHandler": "$t:source/shared-component-handler@SharedComponentHandler"
 	},
 	"metadata": {},
-	"identifierPrefix": "@rbxts/shared-components-flamework",
+	"identifierPrefix": "$t",
 	"classes": [
 		{
-			"filePath": "out\\shared-component.lua",
-			"internalId": "@rbxts/shared-component-flamework:shared-component@SharedComponent",
-			"decorators": [
-				{
-					"internalId": "$c:components@Component",
-					"name": "Component"
-				}
-			]
-		},
-		{
-			"filePath": "out\\shared-component-handler.lua",
-			"internalId": "@rbxts/shared-component-flamework:shared-component-handler@SharedComponentHandler",
-			"decorators": [
-				{
-					"internalId": "$:flamework@Service",
-					"name": "Service"
-				},
-				{
-					"internalId": "$:flamework@Controller",
-					"name": "Controller"
-				}
-			]
-		},
-		{
 			"filePath": "out\\source\\shared-component.lua",
-			"internalId": "@rbxts/shared-component-flamework:source/shared-component@SharedComponent",
+			"internalId": "$t:source/shared-component@SharedComponent",
 			"decorators": [
 				{
 					"internalId": "$c:components@Component",
@@ -52,31 +20,7 @@
 		},
 		{
 			"filePath": "out\\source\\shared-component-handler.lua",
-			"internalId": "@rbxts/shared-component-flamework:source/shared-component-handler@SharedComponentHandler",
-			"decorators": [
-				{
-					"internalId": "$:flamework@Service",
-					"name": "Service"
-				},
-				{
-					"internalId": "$:flamework@Controller",
-					"name": "Controller"
-				}
-			]
-		},
-		{
-			"filePath": "out\\source\\shared-component.lua",
-			"internalId": "@rbxts/shared-components-flamework:source/shared-component@SharedComponent",
-			"decorators": [
-				{
-					"internalId": "$c:components@Component",
-					"name": "Component"
-				}
-			]
-		},
-		{
-			"filePath": "out\\source\\shared-component-handler.lua",
-			"internalId": "@rbxts/shared-components-flamework:source/shared-component-handler@SharedComponentHandler",
+			"internalId": "$t:source/shared-component-handler@SharedComponentHandler",
 			"decorators": [
 				{
 					"internalId": "$:flamework@Service",

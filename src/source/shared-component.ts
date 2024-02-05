@@ -148,7 +148,7 @@ export abstract class SharedComponent<
 			return;
 		}
 
-		const disconnect = remotes._reciveInstanceId.connect((instance, id, metadata) => {
+		const disconnect = remotes._shared_component_reciveInstanceId.connect((instance, id, metadata) => {
 			if (this.prefix === Prefix.Server) return;
 
 			if (instance === this.instance && metadata === this.metadataId) {

@@ -10,7 +10,7 @@ interface State {
 }
 
 @Component({
-	tag: `${MoneyStorageComponent}1`,
+	tag: `${MoneyStorageComponent}`,
 })
 export class MoneyStorageComponent extends SharedComponent<State> implements OnStart {
 	protected state: State = {
