@@ -9,6 +9,7 @@ import { CreateGeneratorId, logAssert, logWarning } from "../utilities";
 import { remotes } from "../remotes";
 import { Selector } from "@rbxts/reflex";
 import { Signal } from "@rbxts/beacon";
+import { SelectSharedComponent } from "../state/slices/selectors";
 
 function CallMethod<T extends Callback>(func: T, context: InferThis<T>, ...parameters: Parameters<T>): ReturnType<T> {
 	return func(context, ...(parameters as unknown[]));
@@ -50,7 +51,9 @@ export abstract class SharedComponent<
 		this.applyId();
 		this.subcribeState();
 		this.initSubscribers();
+		this.initDestroyDetection();
 
+		this.maid.GiveTask(() => rootProducer.ClearState(this.GetFullId()));
 		RunService.Heartbeat.Once(() => {
 			this.waitintForReadyState?.Fire();
 			this.waitintForReadyState?.Destroy();
@@ -116,6 +119,10 @@ export abstract class SharedComponent<
 		return subscriber;
 	}
 
+	protected resolveOnDestroy(): "Destroy" | "Keep" {
+		return "Destroy";
+	}
+
 	private changeId(prefix: Prefix, id: string) {
 		this.id && this.prefix !== Prefix.Server && rootProducer.ClearState(this.id);
 		this.id = id;
@@ -142,9 +149,10 @@ export abstract class SharedComponent<
 		}
 
 		const disconnect = remotes._reciveInstanceId.connect((instance, id, metadata) => {
+			if (this.prefix === Prefix.Server) return;
+
 			if (instance === this.instance && metadata === this.metadataId) {
 				this.changeId(Prefix.Server, id);
-				disconnect();
 			}
 		});
 
@@ -164,6 +172,8 @@ export abstract class SharedComponent<
 	}
 
 	private waitForReadyState() {
+		if (this.state) return;
+
 		this.waitintForReadyState ?? (this.waitintForReadyState = new Signal());
 		this.waitintForReadyState.Wait();
 	}
@@ -175,8 +185,8 @@ export abstract class SharedComponent<
 			rootProducer.subscribe(
 				(state) => state.replication.ComponentStates.get(this.GetFullId()),
 				(state, previousState) => {
-					this.state = state as S;
-					this.previousState = previousState as S;
+					this.state = (state as S) ?? this.state;
+					this.previousState = (previousState as S) ?? this.previousState;
 				},
 			),
 		);
@@ -190,6 +200,23 @@ export abstract class SharedComponent<
 			}
 			return selector(componentState as S);
 		};
+	}
+
+	private initDestroyDetection() {
+		if (!IsClient) return;
+		task.spawn(() => {
+			this.waitForReadyState();
+
+			this.maid.GiveTask(
+				rootProducer.subscribe(
+					(state) => state.replication.ComponentStates.get(this.GetFullId()),
+					(state) => {
+						if (state) return;
+						this.resolveOnDestroy() === "Destroy" ? this.destroy() : this.changeId(Prefix.Client, this.id);
+					},
+				),
+			);
+		});
 	}
 
 	private initSubscribers() {
