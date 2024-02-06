@@ -1,3 +1,5 @@
+import { RunService } from "@rbxts/services";
+
 type GeneratorIdReturning<T extends boolean> = T extends true ? string : number;
 
 export const CreateGeneratorId = <C extends boolean>(isString = false as C) => {
@@ -17,14 +19,17 @@ export const consolePrefix = `SharedComponets`;
 const errorString = `--// [${consolePrefix}]: Caught an error in your code //--`;
 const warnString = `--// [${consolePrefix}] //--`;
 
-export function logError(Message: string, DisplayTraceback = true): never {
-	return error(`\n ${errorString} \n ${Message} \n \n ${DisplayTraceback && debug.traceback()}`);
+export const IsServer = RunService.IsServer();
+export const IsClient = RunService.IsClient();
+
+export function logError(Message?: string, DisplayTraceback = true): never {
+	return error(`\n ${errorString} \n ${Message ?? ""} \n \n ${DisplayTraceback && debug.traceback()}`);
 }
 
 export function logWarning(Message: string) {
 	warn(`\n ${warnString} \n ${Message} \n`);
 }
 
-export function logAssert<T>(condition: T, message: string, DisplayTraceback = true): asserts condition {
+export function logAssert<T>(condition: T, message?: string, DisplayTraceback = true): asserts condition {
 	!condition && logError(message, DisplayTraceback);
 }

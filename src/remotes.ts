@@ -21,4 +21,9 @@ export const remotes = createRemotes({
 		t.string,
 		t.string,
 	),
+	_shared_component_requestMethod: remote<Server, [instanceId: string, method: string, args: unknown[]]>(
+		t.string,
+		t.string,
+		t.array(t.any),
+	).returns<unknown>(),
 });

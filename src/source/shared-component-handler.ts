@@ -16,6 +16,8 @@ import { Component } from "@flamework/components";
 import { SharedComponent } from "./shared-component";
 import { Constructor } from "@flamework/core/out/utility";
 import { SelectListSharedComponentMetadata, SelectSharedComponentMetadata } from "../state/slices/selectors";
+import { DecoratorImplementations } from "./functions/registery-decorator-implementation";
+import { t } from "@rbxts/t";
 
 const event = ReplicatedStorage.FindFirstChild("REFLEX_DEVTOOLS") as RemoteEvent;
 
@@ -52,7 +54,13 @@ export class SharedComponentHandler implements OnInit {
 	private receiver!: BroadcastReceiver<typeof Slices>;
 	private broadcaster!: Broadcaster;
 	private instances = new Map<Metadata, Map<Instance, string>>();
+	private instancesById = new Map<string, SharedComponent<object>>();
 	private sharedComponents = new Map<Constructor, Map<Instance, object>>();
+	private sharedComponentContructors = new Map<
+		Constructor<SharedComponent<object>>,
+		Constructor<SharedComponent<object>>
+	>(); // index - component, value - shared component
+	private sharedcomponentTrees = new Map<Constructor, Constructor[]>();
 	private idGenerator = CreateGeneratorId(true);
 
 	/**
@@ -61,12 +69,27 @@ export class SharedComponentHandler implements OnInit {
 	 */
 	public onInit() {
 		this.registerySharedComponents();
+		this.implementDecorators();
 		RunService.IsServer() && this.serverSetup();
 		RunService.IsClient() && this.clientSetup();
 	}
 
 	public AttachReflexDevTools() {
 		rootProducer.applyMiddleware(devToolMiddleware);
+	}
+
+	private getConstructorIdentifier(constructor: Constructor) {
+		return (Reflect.getMetadata(constructor, "identifier") as string) ?? "Not found id";
+	}
+
+	private implementDecorators() {
+		DecoratorImplementations.forEach((implementationData, decoratorId) => {
+			this.sharedComponentContructors.forEach((sharedComponentContructor, constructor) => {
+				const props = Modding.getPropertyDecorators(constructor, decoratorId);
+				if (props.isEmpty()) return;
+				implementationData.callback(constructor, props, sharedComponentContructor);
+			});
+		});
 	}
 
 	private clientSetup() {
@@ -102,6 +125,33 @@ export class SharedComponentHandler implements OnInit {
 		remotes._shared_component_getInstanceId.onRequest((player, instance, metadata) => {
 			return this.instances.get(metadata)?.get(instance);
 		});
+
+		remotes._shared_component_requestMethod.onRequest((player, fullId, method, args) => {
+			const component = this.instancesById.get(fullId);
+			if (!component) return;
+			const constructor = getmetatable(component) as Constructor<SharedComponent<object>>;
+
+			const checkerArguments = Reflect.getMetadata<t.check<unknown>[]>(
+				constructor,
+				"flamework:parameter_guards",
+				method,
+			);
+
+			if (!checkerArguments) {
+				logWarning(`Method ${method} does not have parameter guards`);
+				return;
+			}
+
+			let isPassedValidation = true;
+			checkerArguments.every((checker, index) => {
+				isPassedValidation = checker(args[index]);
+				return isPassedValidation;
+			});
+
+			if (!isPassedValidation) return;
+
+			return (component[method as never] as Callback)(component, ...args);
+		});
 	}
 
 	public async GetInstanceById(instance: Instance, metadata: Metadata) {
@@ -116,6 +166,14 @@ export class SharedComponentHandler implements OnInit {
 		const result = await remotes._shared_component_getInstanceId(instance, metadata);
 		result && this.addNewInstance(instance, metadata, result);
 		return result;
+	}
+
+	public RegisterSharedComponentInstance(component: SharedComponent<object>, id: string) {
+		this.instancesById.set(id, component);
+	}
+
+	public RemoveSharedComponentInstance(id: string) {
+		this.instancesById.delete(id);
 	}
 
 	private addNewInstance(instance: Instance, metadata: Metadata, id: string) {
@@ -154,7 +212,7 @@ export class SharedComponentHandler implements OnInit {
 	 * @hidden
 	 */
 	public RegisteryDescendantSharedComponent(component: SharedComponent<object>) {
-		const sharedClass = this.getSharedComponent(component);
+		const sharedClass = this.getSharedComponent(getmetatable(component) as Constructor);
 		let instances = this.sharedComponents.get(sharedClass);
 		logAssert(sharedClass, "Failed to get shared component");
 
@@ -175,16 +233,30 @@ export class SharedComponentHandler implements OnInit {
 		return sharedClass;
 	}
 
-	private getSharedComponent(instance: object) {
-		let currentClass = getmetatable(instance) as ConstructorWithIndex;
-		let previousClass = currentClass;
+	private getSharedComponent(constructor: Constructor) {
+		let currentClass = constructor as ConstructorWithIndex;
+		let metatable = getmetatable(currentClass) as ConstructorWithIndex;
 
-		while (currentClass && currentClass.__index !== SharedComponent) {
-			previousClass = currentClass;
-			currentClass = getmetatable(currentClass.__index) as ConstructorWithIndex;
+		while (currentClass && metatable.__index !== SharedComponent) {
+			currentClass = metatable.__index as ConstructorWithIndex;
+			metatable = getmetatable(currentClass) as ConstructorWithIndex;
 		}
 
-		return previousClass.__index as Constructor;
+		return currentClass as Constructor<SharedComponent<object>>;
+	}
+
+	private getInheritanceTree<T>(constructor: Constructor) {
+		let currentClass = constructor as ConstructorWithIndex;
+		let metatable = getmetatable(currentClass) as ConstructorWithIndex;
+		const tree = [constructor] as Constructor<T>[];
+
+		while (currentClass && metatable.__index !== SharedComponent) {
+			currentClass = metatable.__index as ConstructorWithIndex;
+			metatable = getmetatable(currentClass) as ConstructorWithIndex;
+			tree.push(currentClass as unknown as Constructor<T>);
+		}
+
+		return tree;
 	}
 
 	private registerySharedComponents() {
@@ -200,10 +272,22 @@ export class SharedComponentHandler implements OnInit {
 			const componentConstructor = component.constructor;
 			if (!componentConstructor) return;
 			if (componentConstructor === (SharedComponent as unknown as Constructor)) return;
+
+			const sharedComponentConstructor = this.getSharedComponent(componentConstructor);
+			if (!sharedComponentConstructor) return;
+
+			const identifier = this.getConstructorIdentifier(componentConstructor);
+			const tree = this.getInheritanceTree<SharedComponent<object>>(componentConstructor);
+
+			this.sharedComponentContructors.set(
+				componentConstructor as Constructor<SharedComponent<object>>,
+				sharedComponentConstructor,
+			);
+			this.sharedcomponentTrees.set(componentConstructor, tree);
+
 			if (!this.instanceOfSharedComponent(componentConstructor)) return;
 
-			const identifier = Reflect.getMetadata(componentConstructor, "identifier") as string;
-			if (identifier) metadata.set(identifier, this.idGenerator.Next());
+			metadata.set(identifier, this.idGenerator.Next());
 		});
 
 		rootProducer.SetComponentMetadatas(metadata);

@@ -19,6 +19,11 @@ export class ServerValueStorageComponent extends ValueStorageComponent implement
 		});
 	}
 
+	protected testServerMethod(arg: number, arg2: string) {
+		print("server method", arg, arg2);
+		return "Good"
+	}
+
 	public destroy(): void {
 		super.destroy();
 	}

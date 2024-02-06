@@ -97,7 +97,10 @@ export abstract class SharedComponent<
 		listener: (state: R, previousState: R) => void,
 		predicate?: (state: R, previousState: R) => boolean,
 	): WrapSubscriber {
-		const disconnect = rootProducer.subscribe(this.wrapSelector(selector), predicate, listener);
+		const disconnect = rootProducer.subscribe(this.wrapSelector(selector), predicate, (state, previousState) => {
+			this.updateState();
+			listener(state, previousState);
+		});
 		const subscriber = {
 			Disconnect: disconnect,
 
@@ -119,14 +122,23 @@ export abstract class SharedComponent<
 		return subscriber;
 	}
 
+	public Dispatch(state: S) {
+		this.previousState = this.state;
+		this.state = state;
+		rootProducer.Dispatch(this.GetFullId(), this.state);
+	}
+
 	protected resolveOnDestroy(): "Destroy" | "Keep" {
 		return "Destroy";
 	}
 
 	private changeId(prefix: Prefix, id: string) {
+		this.id && this.sharedComponentHandler.RemoveSharedComponentInstance(this.GetFullId());
 		this.id && this.prefix !== Prefix.Server && rootProducer.ClearState(this.id);
 		this.id = id;
 		this.prefix = prefix;
+
+		this.sharedComponentHandler.RegisterSharedComponentInstance(this, this.GetFullId());
 
 		// This method has to be called in the constructor when the state is not ready yet
 		if (!this.state) {
@@ -138,6 +150,15 @@ export abstract class SharedComponent<
 		}
 
 		rootProducer.flush();
+	}
+
+	private updateState() {
+		const oldState = this.state;
+		this.state = (rootProducer.getState(SelectSharedComponent(this.GetFullId())) as S) ?? this.state;
+
+		if (oldState !== this.state) {
+			this.previousState = oldState;
+		}
 	}
 
 	private applyId() {
@@ -228,11 +249,11 @@ export abstract class SharedComponent<
 
 			subscribes.forEach((subscriber) => {
 				this.maid.GiveTask(
-					rootProducer.subscribe<unknown>(
-						this.wrapSelector(subscriber.selector),
+					this.Subscribe(
+						subscriber.selector,
+						(state, previousState) => CallMethod(subscriber.callback, state as S, previousState as S),
 						subscriber.predicate,
-						(state, previousState) => CallMethod(subscriber.callback, this, state as S, previousState as S),
-					),
+					).Disconnect,
 				);
 			});
 		});

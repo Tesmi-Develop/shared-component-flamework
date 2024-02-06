@@ -1,5 +1,4 @@
 import { SharedComponent } from "../shared-component";
-import { rootProducer } from "../../state/rootProducer";
 
 /**
  * Decorator for creating an Action inside a shared component.
@@ -14,7 +13,7 @@ export const Action = () => {
 
 		descriptor.value = function (this: T, ...args: unknown[]) {
 			const result = originalMethod(this, ...args);
-			rootProducer.Dispatch(this.GetFullId(), result);
+			this.Dispatch(result);
 
 			return result;
 		};

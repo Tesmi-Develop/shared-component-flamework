@@ -27,7 +27,7 @@
 			{ 
 				"transform": "rbxts-transformer-flamework",
 				"$rbxpackmode$": true,
-				"hashPrefix": "$t",
+				"hashPrefix": "$s",
 			}
 		]
 	},

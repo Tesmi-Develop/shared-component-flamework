@@ -1,0 +1,81 @@
+{
+	"version": 1,
+	"flameworkVersion": "1.1.0",
+	"identifiers": {
+		"@rbxts/shared-components-flamework:out/src/source/shared-component@SharedComponent": "$s:src/source/shared-component@SharedComponent",
+		"@rbxts/shared-components-flamework:out/src/source/shared-component-handler@SharedComponentHandler": "$s:src/source/shared-component-handler@SharedComponentHandler",
+		"@rbxts/shared-components-flamework:out/test/src/shared/components/valueStorageComponent@ValueStorageComponent": "$s:test/src/shared/components/valueStorageComponent@ValueStorageComponent",
+		"@rbxts/shared-components-flamework:out/test/src/client/components/ValueStorageComponent@ClientValueStorageComponent": "$s:test/src/client/components/ValueStorageComponent@ClientValueStorageComponent",
+		"@rbxts/shared-components-flamework:out/test/src/server/components/ValueStorageComponent@ServerValueStorageComponent": "$s:test/src/server/components/ValueStorageComponent@ServerValueStorageComponent",
+		"@rbxts/shared-components-flamework:out/test/src/shared/components/sharedComponent@MoneyStorageComponent": "$s:test/src/shared/components/sharedComponent@MoneyStorageComponent",
+		"@rbxts/shared-components-flamework:out/src/source/decorators/server-method@ServerMethod": "$s:src/source/decorators/server-method@ServerMethod"
+	},
+	"metadata": {},
+	"identifierPrefix": "$s",
+	"classes": [
+		{
+			"filePath": "out\\src\\source\\shared-component.lua",
+			"internalId": "$s:src/source/shared-component@SharedComponent",
+			"decorators": [
+				{
+					"internalId": "$c:components@Component",
+					"name": "Component"
+				}
+			]
+		},
+		{
+			"filePath": "out\\src\\source\\shared-component-handler.lua",
+			"internalId": "$s:src/source/shared-component-handler@SharedComponentHandler",
+			"decorators": [
+				{
+					"internalId": "$s:flamework@Service",
+					"name": "Service"
+				},
+				{
+					"internalId": "$s:flamework@Controller",
+					"name": "Controller"
+				}
+			]
+		},
+		{
+			"filePath": "out\\test\\src\\shared\\components\\valueStorageComponent.lua",
+			"internalId": "$s:test/src/shared/components/valueStorageComponent@ValueStorageComponent",
+			"decorators": [
+				{
+					"internalId": "$c:components@Component",
+					"name": "Component"
+				}
+			]
+		},
+		{
+			"filePath": "out\\test\\src\\client\\components\\ValueStorageComponent.lua",
+			"internalId": "$s:test/src/client/components/ValueStorageComponent@ClientValueStorageComponent",
+			"decorators": [
+				{
+					"internalId": "$c:components@Component",
+					"name": "Component"
+				}
+			]
+		},
+		{
+			"filePath": "out\\test\\src\\server\\components\\ValueStorageComponent.lua",
+			"internalId": "$s:test/src/server/components/ValueStorageComponent@ServerValueStorageComponent",
+			"decorators": [
+				{
+					"internalId": "$c:components@Component",
+					"name": "Component"
+				}
+			]
+		},
+		{
+			"filePath": "out\\test\\src\\shared\\components\\sharedComponent.lua",
+			"internalId": "$s:test/src/shared/components/sharedComponent@MoneyStorageComponent",
+			"decorators": [
+				{
+					"internalId": "$c:components@Component",
+					"name": "Component"
+				}
+			]
+		}
+	]
+}
