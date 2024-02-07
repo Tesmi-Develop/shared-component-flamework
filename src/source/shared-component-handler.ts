@@ -15,9 +15,15 @@ import { CreateGeneratorId, logAssert, logWarning } from "../utilities";
 import { Component } from "@flamework/components";
 import { SharedComponent } from "./shared-component";
 import { Constructor } from "@flamework/core/out/utility";
-import { SelectListSharedComponentMetadata, SelectSharedComponentMetadata } from "../state/slices/selectors";
+import {
+	SelectListSharedComponentMetadata,
+	SelectSharedComponent,
+	SelectSharedComponentMetadata,
+} from "../state/slices/selectors";
 import { DecoratorImplementations } from "./functions/registery-decorator-implementation";
 import { t } from "@rbxts/t";
+import { restoreNotChangedProperties } from "./functions/restoreNotChangedProperties";
+import { DISPATCH } from "../state/slices/replication";
 
 const event = ReplicatedStorage.FindFirstChild("REFLEX_DEVTOOLS") as RemoteEvent;
 
@@ -34,6 +40,26 @@ const devToolMiddleware: ProducerMiddleware = () => {
 			}
 
 			return state;
+		};
+	};
+};
+
+const restoreNotChangedStateMiddleware: ProducerMiddleware = () => {
+	return (nextAction, actionName) => {
+		return (...args) => {
+			if (actionName === DISPATCH) {
+				const [id, newState] = args as Parameters<(typeof rootProducer)[typeof DISPATCH]>;
+				const typedAction = nextAction as (typeof rootProducer)[typeof DISPATCH];
+				const oldState = rootProducer.getState(SelectSharedComponent(id));
+
+				if (oldState === undefined || newState === undefined) return newState;
+
+				const validatedState = restoreNotChangedProperties(newState, oldState);
+
+				return typedAction(id, validatedState);
+			}
+
+			return nextAction(...args);
 		};
 	};
 };
@@ -107,7 +133,7 @@ export class SharedComponentHandler implements OnInit {
 			this.addNewInstance(instance, metadata, id);
 		});
 
-		rootProducer.applyMiddleware(this.receiver.middleware);
+		rootProducer.applyMiddleware(this.receiver.middleware, restoreNotChangedStateMiddleware);
 	}
 
 	private serverSetup() {

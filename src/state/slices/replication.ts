@@ -11,8 +11,10 @@ const initialState: State = {
 	ComponetMetadatas: new Map(),
 };
 
+export const DISPATCH = "Dispatch";
+
 export const replicationSlice = createProducer(initialState, {
-	Dispatch: (state, key: string, newState: defined) => {
+	[DISPATCH]: (state, key: string, newState: defined) => {
 		return produce(state, (draft) => {
 			draft.ComponentStates.set(key, newState);
 		});
