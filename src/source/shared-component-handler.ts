@@ -52,7 +52,11 @@ const restoreNotChangedStateMiddleware: ProducerMiddleware = () => {
 				const typedAction = nextAction as (typeof rootProducer)[typeof DISPATCH];
 				const oldState = rootProducer.getState(SelectSharedComponent(id));
 
-				if (oldState === undefined || newState === undefined) return newState;
+				if (oldState === undefined) {
+					return nextAction(...args);
+				}
+
+				if (oldState === undefined || newState === undefined) return nextAction(...args);
 
 				const validatedState = restoreNotChangedProperties(newState, oldState);
 
@@ -139,6 +143,7 @@ export class SharedComponentHandler implements OnInit {
 	private serverSetup() {
 		this.broadcaster = createBroadcaster({
 			producers: Slices,
+			hydrateRate: -1,
 
 			dispatch: (player, actions) => {
 				remotes._shared_component_dispatch.fire(player, actions);
