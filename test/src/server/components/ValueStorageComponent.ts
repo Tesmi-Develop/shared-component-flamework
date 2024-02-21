@@ -1,7 +1,8 @@
-import { Component, Components } from "@flamework/components";
-import { Dependency, OnStart } from "@flamework/core";
+import { Component } from "@flamework/components";
+import { OnStart } from "@flamework/core";
 import { ValueStorageComponent } from "shared/components/valueStorageComponent";
 import { Action } from "../../source/decorators";
+import { Players } from "@rbxts/services";
 
 @Component({
 	tag: "ValueStorageComponent",
@@ -11,7 +12,7 @@ export class ServerValueStorageComponent extends ValueStorageComponent implement
 		task.spawn(() => {
 			const instance = this.instance;
 			let k = 0;
-			while (task.wait(3) && k < 5) {
+			while (task.wait(3)) {
 				this.increment();
 				k++;
 			}
@@ -19,9 +20,8 @@ export class ServerValueStorageComponent extends ValueStorageComponent implement
 		});
 	}
 
-	protected testServerMethod(arg: number, arg2: string) {
-		print("server method", arg, arg2);
-		return "Good";
+	public ResolveReplicationForPlayers() {
+		return Players.GetPlayers()[0];
 	}
 
 	public destroy(): void {

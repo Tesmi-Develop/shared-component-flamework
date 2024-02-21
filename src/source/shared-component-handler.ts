@@ -24,6 +24,7 @@ import { DecoratorImplementations } from "./functions/registery-decorator-implem
 import { t } from "@rbxts/t";
 import { restoreNotChangedProperties } from "./functions/restoreNotChangedProperties";
 import { DISPATCH } from "../state/slices/replication";
+import Immut from "@rbxts/immut";
 
 const event = ReplicatedStorage.FindFirstChild("REFLEX_DEVTOOLS") as RemoteEvent;
 
@@ -51,10 +52,6 @@ const restoreNotChangedStateMiddleware: ProducerMiddleware = () => {
 				const [id, newState] = args as Parameters<(typeof rootProducer)[typeof DISPATCH]>;
 				const typedAction = nextAction as (typeof rootProducer)[typeof DISPATCH];
 				const oldState = rootProducer.getState(SelectSharedComponent(id));
-
-				if (oldState === undefined) {
-					return nextAction(...args);
-				}
 
 				if (oldState === undefined || newState === undefined) return nextAction(...args);
 
@@ -96,6 +93,7 @@ export class SharedComponentHandler implements OnInit {
 	/**
 	 * @deprecated
 	 * @hidden
+	 * @internal
 	 */
 	public onInit() {
 		this.registerySharedComponents();
@@ -144,6 +142,43 @@ export class SharedComponentHandler implements OnInit {
 		this.broadcaster = createBroadcaster({
 			producers: Slices,
 			hydrateRate: -1,
+
+			beforeDispatch: (player, action) => {
+				if (action.name !== DISPATCH) return action;
+
+				const [id] = action.arguments as Parameters<(typeof rootProducer)[typeof DISPATCH]>;
+				const component = this.instancesById.get(id);
+				logAssert(component, `Component with id ${id} is not found`);
+				const players = component.ResolveReplicationForPlayers();
+
+				if (!players) return action;
+
+				if (!t.array(t.any)(players)) {
+					return player === players ? action : undefined;
+				}
+
+				return players.includes(player) ? action : undefined;
+			},
+
+			beforeHydrate: (player, state) => {
+				return Immut.produce(state, (draft) => {
+					const states = draft.replication.ComponentStates;
+
+					states.forEach((_, id) => {
+						const component = this.instancesById.get(id);
+						logAssert(component, `Component with id ${id} is not found`);
+						const players = component.ResolveReplicationForPlayers();
+
+						if (!players) return;
+
+						if (!t.array(t.any)(players)) {
+							return player !== players && states.delete(id);
+						}
+
+						return !players.includes(player) && states.delete(id);
+					});
+				});
+			},
 
 			dispatch: (player, actions) => {
 				remotes._shared_component_dispatch.fire(player, actions);

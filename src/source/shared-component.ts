@@ -25,7 +25,7 @@ const IsClient = RunService.IsClient();
 
 @Component()
 export abstract class SharedComponent<
-	S extends object,
+	S extends object = {},
 	A extends object = {},
 	I extends Instance = Instance,
 > extends BaseComponent<A, I> {
@@ -43,7 +43,7 @@ export abstract class SharedComponent<
 
 		const sharedComponent = this.sharedComponentHandler.RegisteryDescendantSharedComponent(this);
 		this.metadataId = this.sharedComponentHandler.GetSharedComponentMetadataId(sharedComponent)!;
-		logAssert(this.metadataId, "Shared component metadata id not found");
+		logAssert(this.metadataId, "Shared component metadata id is not found");
 		this.onSetup();
 	}
 
@@ -120,6 +120,15 @@ export abstract class SharedComponent<
 		};
 
 		return subscriber;
+	}
+
+	/**
+	 * Resolve replication players.
+	 * @server
+	 * @return {undefined | Player | Player[]}
+	 */
+	public ResolveReplicationForPlayers(): undefined | Player | Player[] {
+		return undefined;
 	}
 
 	public Dispatch(state: S) {

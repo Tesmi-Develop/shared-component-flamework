@@ -6,12 +6,7 @@ import { OnStart } from "@flamework/core";
 @Component({
 	tag: "ValueStorageComponent",
 })
-export class ClientValueStorageComponent extends ValueStorageComponent implements OnStart {
-	onStart(): void {
-		task.delay(1, () => {
-			print(this.testServerMethod(1, "4"));
-		});
-	}
+export class ClientValueStorageComponent extends ValueStorageComponent {
 
 	public destroy(): void {
 		super.destroy();
