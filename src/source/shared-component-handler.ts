@@ -2,19 +2,13 @@ import { Controller, Modding, OnInit, Service } from "@flamework/core";
 import { BroadcastAction, ProducerMiddleware } from "@rbxts/reflex";
 import { ReplicatedStorage, RunService } from "@rbxts/services";
 import { remotes } from "../remotes";
-import { rootProducer } from "../state/rootProducer";
 import { SharedComponent } from "./shared-component";
-import { Constructor } from "@flamework/core/out/utility";
 import { IsClient, IsServer, logWarning } from "../utilities";
 import { SharedComponentInfo } from "../types";
 import { Components } from "@flamework/components";
 import { Pointer } from "./pointer";
 
 const event = ReplicatedStorage.FindFirstChild("REFLEX_DEVTOOLS") as RemoteEvent;
-
-interface ConstructorWithIndex extends Constructor {
-	__index: object;
-}
 
 const devToolMiddleware: ProducerMiddleware = () => {
 	return (nextAction, actionName) => {
@@ -115,34 +109,4 @@ export class SharedComponentHandler implements OnInit {
 	}
 
 	private onServerSetup() {}
-
-	public AttachReflexDevTools() {
-		rootProducer.applyMiddleware(devToolMiddleware);
-	}
-
-	private getSharedComponent(constructor: Constructor) {
-		let currentClass = constructor as ConstructorWithIndex;
-		let metatable = getmetatable(currentClass) as ConstructorWithIndex;
-
-		while (currentClass && metatable.__index !== SharedComponent) {
-			currentClass = metatable.__index as ConstructorWithIndex;
-			metatable = getmetatable(currentClass) as ConstructorWithIndex;
-		}
-
-		return currentClass as Constructor<SharedComponent<object>>;
-	}
-
-	private getInheritanceTree<T>(constructor: Constructor) {
-		let currentClass = constructor as ConstructorWithIndex;
-		let metatable = getmetatable(currentClass) as ConstructorWithIndex;
-		const tree = [constructor] as Constructor<T>[];
-
-		while (currentClass && metatable.__index !== SharedComponent) {
-			currentClass = metatable.__index as ConstructorWithIndex;
-			metatable = getmetatable(currentClass) as ConstructorWithIndex;
-			tree.push(currentClass as unknown as Constructor<T>);
-		}
-
-		return tree;
-	}
 }
