@@ -1,6 +1,6 @@
 import { BaseComponent, Component } from "@flamework/components";
 import { onSetupSharedComponent } from "./shared-component-handler";
-import { RunService } from "@rbxts/services";
+import { ReplicatedStorage, RunService } from "@rbxts/services";
 import { GetConstructorIdentifier, GetInheritanceTree } from "../utilities";
 import {
 	ClassProducer,
@@ -8,7 +8,7 @@ import {
 	IClassProducer,
 	createPatchBroadcastReceiver,
 } from "@rbxts/reflex-class";
-import { BroadcastAction, Producer } from "@rbxts/reflex";
+import { BroadcastAction, Producer, ProducerMiddleware } from "@rbxts/reflex";
 import { remotes } from "../remotes";
 import { Constructor } from "@flamework/core/out/utility";
 import { SharedComponentInfo } from "../types";
@@ -16,6 +16,7 @@ import { Pointer } from "./pointer";
 
 const IsServer = RunService.IsServer();
 const IsClient = RunService.IsClient();
+const event = ReplicatedStorage.FindFirstChild("REFLEX_DEVTOOLS") as RemoteEvent;
 
 const mergeSharedComponent = () => {
 	const typedSharedComponent = SharedComponent as object;
@@ -33,7 +34,7 @@ export
 @Component()
 abstract class SharedComponent<S extends object = {}, A extends object = {}, I extends Instance = Instance>
 	extends BaseComponent<A, I>
-	implements Omit<IClassProducer, "Destroy">, onSetupSharedComponent
+	implements IClassProducer, onSetupSharedComponent
 {
 	protected pointer: Pointer | undefined;
 	protected abstract state: S;
@@ -43,7 +44,8 @@ abstract class SharedComponent<S extends object = {}, A extends object = {}, I e
 	protected receiver!: ReturnType<typeof createPatchBroadcastReceiver>;
 	private tree: Constructor[];
 	/** @client */
-	protected isBlockedServerDispatches = false;
+	protected isBlockingServerDispatches = false;
+	private isEnableDevTool = false;
 
 	constructor() {
 		super();
@@ -65,12 +67,25 @@ abstract class SharedComponent<S extends object = {}, A extends object = {}, I e
 		};
 	}
 
+	/** @client */
+	public AttachDevTool() {
+		assert(IsClient, "Must be a client");
+		this.isEnableDevTool = true;
+	}
+
+	/** @client */
+	public DisableDevTool() {
+		assert(IsClient, "Must be a client");
+		this.isEnableDevTool = false;
+	}
+
 	/**
 	 * @internal
 	 * @hidden
 	 **/
 	public __DispatchFromServer(actions: BroadcastAction[]) {
-		if (this.isBlockedServerDispatches) return;
+		if (this.isBlockingServerDispatches) return;
+
 		return this.receiver.dispatch(actions);
 	}
 
@@ -112,13 +127,37 @@ abstract class SharedComponent<S extends object = {}, A extends object = {}, I e
 	}
 
 	private _onStartClient() {
+		const componentName = `${getmetatable(this)}`;
 		this.receiver = createPatchBroadcastReceiver({
 			start: () => {
 				remotes._shared_component_start.fire(this.instance);
 			},
+
+			OnPatch: (action) => {
+				if (!this.isEnableDevTool) return;
+
+				event.FireServer({
+					name: `${componentName}_serverDispatch`,
+					args: [action],
+					state: this.producer.getState(),
+				});
+			},
 		});
 
-		this.producer.applyMiddleware(this.receiver.middleware);
+		const devToolMiddleware: ProducerMiddleware = () => {
+			return (nextAction, actionName) => {
+				return (...args) => {
+					const state = nextAction(...args);
+					if (RunService.IsStudio() && event && this.isEnableDevTool) {
+						event.FireServer({ name: `${componentName}_dispatch`, args: [...args], state });
+					}
+
+					return state;
+				};
+			};
+		};
+
+		this.producer.applyMiddleware(this.receiver.middleware, devToolMiddleware);
 	}
 
 	// Implement types
@@ -145,10 +184,17 @@ abstract class SharedComponent<S extends object = {}, A extends object = {}, I e
 		throw "Method not implemented.";
 	}
 
+	/**
+	 * @internal
+	 * @hidden
+	 **/
+	Destroy(): void {
+		throw "Method not implemented.";
+	}
+
 	public destroy() {
 		super.destroy();
 		this._classProducerLink.Destroy();
-		//this.maid.Destroy();
 	}
 }
 

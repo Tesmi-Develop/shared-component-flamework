@@ -8,7 +8,7 @@ import { Players } from "@rbxts/services";
 })
 export class ServerValueStorageComponent extends ValueStorageComponent implements OnStart {
 	protected pointer = ValueStorageComponentPointer;
-	
+
 	onStart(): void {
 		/*task.spawn(() => {
 			const instance = this.instance;
@@ -25,8 +25,11 @@ export class ServerValueStorageComponent extends ValueStorageComponent implement
 			(val) => print(`server value: ${val}`),
 		);
 
+		task.wait(6);
 		this.Dispatch({
 			value: 10,
+			a: 6,
+			b: 6,
 		});
 	}
 

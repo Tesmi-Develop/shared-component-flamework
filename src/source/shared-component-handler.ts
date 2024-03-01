@@ -1,27 +1,11 @@
 import { Controller, Modding, OnInit, Service } from "@flamework/core";
-import { BroadcastAction, ProducerMiddleware } from "@rbxts/reflex";
-import { ReplicatedStorage, RunService } from "@rbxts/services";
+import { BroadcastAction } from "@rbxts/reflex";
 import { remotes } from "../remotes";
 import { SharedComponent } from "./shared-component";
-import { IsClient, IsServer, logWarning } from "../utilities";
+import { IsClient, logWarning } from "../utilities";
 import { SharedComponentInfo } from "../types";
 import { Components } from "@flamework/components";
 import { Pointer } from "./pointer";
-
-const event = ReplicatedStorage.FindFirstChild("REFLEX_DEVTOOLS") as RemoteEvent;
-
-const devToolMiddleware: ProducerMiddleware = () => {
-	return (nextAction, actionName) => {
-		return (...args) => {
-			const state = nextAction(...args);
-			if (RunService.IsStudio() && event) {
-				event.FireServer({ name: actionName, args: [...args], state });
-			}
-
-			return state;
-		};
-	};
-};
 
 export interface onSetupSharedComponent {
 	onSetup(): void;
@@ -42,7 +26,6 @@ export class SharedComponentHandler implements OnInit {
 	 */
 	public onInit() {
 		Modding.onListenerAdded<onSetupSharedComponent>((val) => val.onSetup());
-		IsServer && this.onServerSetup();
 		IsClient && this.onClientSetup();
 	}
 
@@ -107,6 +90,4 @@ export class SharedComponentHandler implements OnInit {
 			this.resolveDispatch(actions, componentInfo);
 		});
 	}
-
-	private onServerSetup() {}
 }

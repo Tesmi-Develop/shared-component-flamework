@@ -1,7 +1,7 @@
 import { Component } from "@flamework/components";
 import { ValueStorageComponent, ValueStorageComponentPointer } from "shared/components/valueStorageComponent";
 import { OnStart } from "@flamework/core";
-import { Pointer } from "../../source/pointer";
+import { remotes } from "../../remotes";
 
 @Component({
 	tag: "ValueStorageComponent",
@@ -31,18 +31,18 @@ export class Client1ValueStorageComponent extends ValueStorageComponent implemen
 	protected pointer = ValueStorageComponentPointer;
 
 	onStart(): void {
+		this.AttachDevTool();
 		this.Subscribe(
 			(state) => state.value,
 			(val) => print(`client value: ${val}`),
 		);
-	}
 
-	public destroy(): void {
-		super.destroy();
-		print("client destroy");
-	}
+		task.wait(7);
 
-	private onIncrement(newValue: number) {
-		print(`new value: ${newValue}`);
+		this.Dispatch({
+			value: 2,
+			a: 11,
+			b: 11,
+		});
 	}
 }

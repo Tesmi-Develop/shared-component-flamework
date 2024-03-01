@@ -2,6 +2,7 @@
 	"version": 1,
 	"flameworkVersion": "1.1.0",
 	"identifiers": {
+		"@rbxts/shared-components-flamework:out/source/pointer@Pointer": "$s:source/pointer@Pointer",
 		"@rbxts/shared-components-flamework:out/source/shared-component@SharedComponent": "$s:source/shared-component@SharedComponent",
 		"@rbxts/shared-components-flamework:out/source/shared-component-handler@SharedComponentHandler": "$s:source/shared-component-handler@SharedComponentHandler",
 		"@rbxts/shared-components-flamework:out/source/shared-component-handler@onSetupSharedComponent": "$s:source/shared-component-handler@onSetupSharedComponent"

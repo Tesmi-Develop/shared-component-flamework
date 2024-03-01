@@ -4,6 +4,8 @@ import { CreatePointer } from "../../source/pointer";
 
 interface State {
 	value: number;
+	a: number;
+	b: number;
 }
 
 export const ValueStorageComponentPointer = CreatePointer("ValueStorageComponent");
@@ -12,5 +14,7 @@ export const ValueStorageComponentPointer = CreatePointer("ValueStorageComponent
 export class ValueStorageComponent extends SharedComponent<State> {
 	protected state = {
 		value: 0,
+		a: 1,
+		b: 2,
 	};
 }
