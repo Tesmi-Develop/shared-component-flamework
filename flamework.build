@@ -4,10 +4,7 @@
 	"identifiers": {
 		"@rbxts/shared-components-flamework:out/source/shared-component@SharedComponent": "$s:source/shared-component@SharedComponent",
 		"@rbxts/shared-components-flamework:out/source/shared-component-handler@SharedComponentHandler": "$s:source/shared-component-handler@SharedComponentHandler",
-		"@rbxts/shared-components-flamework:out/source/decorators/server-method@ServerMethod": "$s:source/decorators/server-method@ServerMethod",
-		"@rbxts/shared-components-flamework:out/a@T": "$s:a@T",
-		"@rbxts/shared-components-flamework:out/a@testDec": "$s:a@testDec",
-		"@rbxts/shared-components-flamework:out/a@a": "$s:a@a"
+		"@rbxts/shared-components-flamework:out/source/shared-component-handler@onSetupSharedComponent": "$s:source/shared-component-handler@onSetupSharedComponent"
 	},
 	"metadata": {},
 	"identifierPrefix": "$s",
@@ -35,16 +32,6 @@
 					"name": "Controller"
 				}
 			]
-		},
-		{
-			"filePath": "out\\a.lua",
-			"internalId": "$s:a@T",
-			"decorators": []
-		},
-		{
-			"filePath": "out\\a.lua",
-			"internalId": "$s:a@a",
-			"decorators": []
 		}
 	]
 }

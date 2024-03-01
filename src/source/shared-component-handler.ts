@@ -1,30 +1,14 @@
-import { Controller, Modding, OnInit, Reflect, Service } from "@flamework/core";
-import {
-	BroadcastReceiver,
-	Broadcaster,
-	ProducerMiddleware,
-	createBroadcastReceiver,
-	createBroadcaster,
-} from "@rbxts/reflex";
+import { Controller, Modding, OnInit, Service } from "@flamework/core";
+import { BroadcastAction, ProducerMiddleware } from "@rbxts/reflex";
 import { ReplicatedStorage, RunService } from "@rbxts/services";
-import { Slices } from "../state/slices";
 import { remotes } from "../remotes";
 import { rootProducer } from "../state/rootProducer";
-import { OnlyServer } from "./decorators/only-server";
-import { CreateGeneratorId, logAssert, logWarning } from "../utilities";
-import { Component } from "@flamework/components";
 import { SharedComponent } from "./shared-component";
 import { Constructor } from "@flamework/core/out/utility";
-import {
-	SelectListSharedComponentMetadata,
-	SelectSharedComponent,
-	SelectSharedComponentMetadata,
-} from "../state/slices/selectors";
-import { DecoratorImplementations } from "./functions/registery-decorator-implementation";
-import { t } from "@rbxts/t";
-import { restoreNotChangedProperties } from "./functions/restoreNotChangedProperties";
-import { DISPATCH } from "../state/slices/replication";
-import Immut from "@rbxts/immut";
+import { IsClient, IsServer, logWarning } from "../utilities";
+import { SharedComponentInfo } from "../types";
+import { Components } from "@flamework/components";
+import { Pointer } from "./pointer";
 
 const event = ReplicatedStorage.FindFirstChild("REFLEX_DEVTOOLS") as RemoteEvent;
 
@@ -45,31 +29,9 @@ const devToolMiddleware: ProducerMiddleware = () => {
 	};
 };
 
-const restoreNotChangedStateMiddleware: ProducerMiddleware = () => {
-	return (nextAction, actionName) => {
-		return (...args) => {
-			if (actionName === DISPATCH) {
-				const [id, newState] = args as Parameters<(typeof rootProducer)[typeof DISPATCH]>;
-				const typedAction = nextAction as (typeof rootProducer)[typeof DISPATCH];
-				const oldState = rootProducer.getState(SelectSharedComponent(id));
-
-				if (oldState === undefined || newState === undefined) return nextAction(...args);
-
-				const validatedState = restoreNotChangedProperties(newState, oldState);
-
-				return typedAction(id, validatedState);
-			}
-
-			return nextAction(...args);
-		};
-	};
-};
-
 export interface onSetupSharedComponent {
 	onSetup(): void;
 }
-
-type Metadata = string;
 
 @Service({
 	loadOrder: 0,
@@ -78,225 +40,84 @@ type Metadata = string;
 	loadOrder: 0,
 })
 export class SharedComponentHandler implements OnInit {
-	private receiver!: BroadcastReceiver<typeof Slices>;
-	private broadcaster!: Broadcaster;
-	private instances = new Map<Metadata, Map<Instance, string>>();
-	private instancesById = new Map<string, SharedComponent<object>>();
-	private sharedComponents = new Map<Constructor, Map<Instance, object>>();
-	private sharedComponentContructors = new Map<
-		Constructor<SharedComponent<object>>,
-		Constructor<SharedComponent<object>>
-	>(); // index - component, value - shared component
-	private sharedcomponentTrees = new Map<Constructor, Constructor[]>();
-	private idGenerator = CreateGeneratorId(true);
+	constructor(private components: Components) {}
 
 	/**
-	 * @deprecated
 	 * @hidden
 	 * @internal
 	 */
 	public onInit() {
-		this.registerySharedComponents();
-		this.implementDecorators();
-		RunService.IsServer() && this.serverSetup();
-		RunService.IsClient() && this.clientSetup();
+		Modding.onListenerAdded<onSetupSharedComponent>((val) => val.onSetup());
+		IsServer && this.onServerSetup();
+		IsClient && this.onClientSetup();
 	}
 
-	public AttachReflexDevTools() {
-		rootProducer.applyMiddleware(devToolMiddleware);
+	private invokeDispatch(component: SharedComponent, actions: BroadcastAction[]) {
+		component.__DispatchFromServer(actions);
 	}
 
-	private getConstructorIdentifier(constructor: Constructor) {
-		return (Reflect.getMetadata(constructor, "identifier") as string) ?? "Not found id";
-	}
-
-	private implementDecorators() {
-		DecoratorImplementations.forEach((implementationData, decoratorId) => {
-			this.sharedComponentContructors.forEach((sharedComponentContructor, constructor) => {
-				const props = Modding.getPropertyDecorators(constructor, decoratorId);
-				if (props.isEmpty()) return;
-				implementationData.callback(constructor, props, sharedComponentContructor);
-			});
-		});
-	}
-
-	private clientSetup() {
-		this.receiver = createBroadcastReceiver({
-			start: () => {
-				remotes._shared_component_start.fire();
-			},
-		});
-
-		remotes._shared_component_dispatch.connect((actions) => {
-			this.receiver.dispatch(actions);
-		});
-
-		remotes._shared_component_reciveInstanceId.connect((instance, metadata, id) => {
-			this.addNewInstance(instance, metadata, id);
-		});
-
-		rootProducer.applyMiddleware(this.receiver.middleware, restoreNotChangedStateMiddleware);
-	}
-
-	private serverSetup() {
-		this.broadcaster = createBroadcaster({
-			producers: Slices,
-			hydrateRate: -1,
-
-			beforeDispatch: (player, action) => {
-				if (action.name !== DISPATCH) return action;
-
-				const [id] = action.arguments as Parameters<(typeof rootProducer)[typeof DISPATCH]>;
-				const component = this.instancesById.get(id);
-				logAssert(component, `Component with id ${id} is not found`);
-				const players = component.ResolveReplicationForPlayers();
-
-				if (!players) return action;
-
-				if (!t.array(t.any)(players)) {
-					return player === players ? action : undefined;
-				}
-
-				return players.includes(player) ? action : undefined;
-			},
-
-			beforeHydrate: (player, state) => {
-				return Immut.produce(state, (draft) => {
-					const states = draft.replication.ComponentStates;
-
-					states.forEach((_, id) => {
-						const component = this.instancesById.get(id);
-						logAssert(component, `Component with id ${id} is not found`);
-						const players = component.ResolveReplicationForPlayers();
-
-						if (!players) return;
-
-						if (!t.array(t.any)(players)) {
-							return player !== players && states.delete(id);
-						}
-
-						return !players.includes(player) && states.delete(id);
-					});
-				});
-			},
-
-			dispatch: (player, actions) => {
-				remotes._shared_component_dispatch.fire(player, actions);
-			},
-		});
-
-		rootProducer.applyMiddleware(this.broadcaster.middleware);
-		remotes._shared_component_start.connect((player) => this.broadcaster.start(player));
-
-		remotes._shared_component_getInstanceId.onRequest((player, instance, metadata) => {
-			return this.instances.get(metadata)?.get(instance);
-		});
-
-		remotes._shared_component_requestMethod.onRequest((player, fullId, method, args) => {
-			const component = this.instancesById.get(fullId);
-			if (!component) return;
-			const constructor = getmetatable(component) as Constructor<SharedComponent<object>>;
-
-			const checkerArguments = Reflect.getMetadata<t.check<unknown>[]>(
-				constructor,
-				"flamework:parameter_guards",
-				method,
+	private resolveDispatch(
+		actions: BroadcastAction[],
+		{ Instance, Identifier, SharedIdentifier, PointerID }: SharedComponentInfo,
+	) {
+		if (!Modding.getObjectFromId(SharedIdentifier)) {
+			logWarning(
+				`Attempt to allow dispatching, but shared component does not exist\n SharedIdentifier: ${SharedIdentifier}`,
 			);
+			return;
+		}
 
-			if (!checkerArguments) {
-				logWarning(`Method ${method} does not have parameter guards`);
+		// Try get component from pointer
+		if (PointerID) {
+			const pointer = Pointer.GetPointer(PointerID);
+
+			if (!pointer) {
+				logWarning(`Attempt to dispatch component with missing pointer\n PointerID: ${PointerID}`);
 				return;
 			}
 
-			let isPassedValidation = true;
-			checkerArguments.every((checker, index) => {
-				isPassedValidation = checker(args[index]);
-				return isPassedValidation;
-			});
+			try {
+				const component = this.components.getComponent<SharedComponent>(
+					Instance,
+					pointer.GetComponentMetadata(),
+				);
+				component && this.invokeDispatch(component, actions);
+			} catch (error) {
+				logWarning(`${error}\n PointerID: ${PointerID}`);
+			}
 
-			if (!isPassedValidation) return;
+			return;
+		}
 
-			return (component[method as never] as Callback)(component, ...args);
+		// Try get component from indentifier
+		if (Modding.getObjectFromId(Identifier)) {
+			const component = this.components.getComponent<SharedComponent>(Instance, Identifier);
+			component && this.invokeDispatch(component, actions);
+		}
+
+		// Try get component from shared identifier
+		const sharedComponent = this.components.getComponents<SharedComponent>(Instance, SharedIdentifier);
+
+		if (sharedComponent.size() > 1) {
+			logWarning(
+				`Attempt to allow dispatching when an instance has multiple sharedComponent\n Instance: ${Instance}\n SharedIdentifier: ${SharedIdentifier}\n ServerIdentifier: ${Identifier}`,
+			);
+			return;
+		}
+
+		this.invokeDispatch(sharedComponent[0], actions);
+	}
+
+	private onClientSetup() {
+		remotes._shared_component_dispatch.connect((actions, componentInfo) => {
+			this.resolveDispatch(actions, componentInfo);
 		});
 	}
 
-	public async GetInstanceById(instance: Instance, metadata: Metadata) {
-		if (RunService.IsServer()) {
-			return this.instances.get(metadata)?.get(instance);
-		}
+	private onServerSetup() {}
 
-		if (this.instances.get(metadata)?.has(instance)) {
-			return this.instances.get(metadata)?.get(instance);
-		}
-
-		const result = await remotes._shared_component_getInstanceId(instance, metadata);
-		result && this.addNewInstance(instance, metadata, result);
-		return result;
-	}
-
-	public RegisterSharedComponentInstance(component: SharedComponent<object>, id: string) {
-		this.instancesById.set(id, component);
-	}
-
-	public RemoveSharedComponentInstance(id: string) {
-		this.instancesById.delete(id);
-	}
-
-	private addNewInstance(instance: Instance, metadata: Metadata, id: string) {
-		let instances = this.instances.get(metadata);
-
-		if (!instances) {
-			instances = new Map();
-			this.instances.set(metadata, instances);
-		}
-
-		instances.set(instance, id);
-	}
-
-	/**
-	 * @server
-	 */
-	@OnlyServer
-	public AddNewInstance(instance: Instance, metadata: Metadata, id: string) {
-		this.addNewInstance(instance, metadata, id);
-		remotes._shared_component_reciveInstanceId.fireAll(instance, metadata, id);
-	}
-
-	public GetSharedComponentMetadataId(component: Constructor) {
-		const identifier = Reflect.getMetadata(component as object, "identifier") as string;
-		logAssert(identifier, "Failed to get identifier");
-
-		return rootProducer.getState(SelectSharedComponentMetadata(identifier));
-	}
-
-	private instanceOfSharedComponent(obj: object) {
-		const metatable = getmetatable(obj) as ConstructorWithIndex;
-		return metatable.__index === SharedComponent;
-	}
-
-	/**
-	 * @hidden
-	 */
-	public RegisteryDescendantSharedComponent(component: SharedComponent<object>) {
-		const sharedClass = this.getSharedComponent(getmetatable(component) as Constructor);
-		let instances = this.sharedComponents.get(sharedClass);
-		logAssert(sharedClass, "Failed to get shared component");
-
-		if (!instances) {
-			instances = new Map();
-			this.sharedComponents.set(sharedClass, instances);
-		}
-
-		if (instances.has(component.instance)) {
-			logWarning(
-				`${sharedClass} already has a descendant. The second descendant will have the state of the first descendant `,
-			);
-			return sharedClass;
-		}
-
-		instances.set(component.instance, component);
-
-		return sharedClass;
+	public AttachReflexDevTools() {
+		rootProducer.applyMiddleware(devToolMiddleware);
 	}
 
 	private getSharedComponent(constructor: Constructor) {
@@ -323,39 +144,5 @@ export class SharedComponentHandler implements OnInit {
 		}
 
 		return tree;
-	}
-
-	private registerySharedComponents() {
-		const listMetadata = rootProducer.getState(SelectListSharedComponentMetadata);
-		if (RunService.IsClient() && listMetadata.size() > 0) {
-			return;
-		}
-
-		const metadata = new Map<Metadata, string>();
-		const components = Modding.getDecorators<typeof Component>();
-
-		components.forEach((component) => {
-			const componentConstructor = component.constructor;
-			if (!componentConstructor) return;
-			if (componentConstructor === (SharedComponent as unknown as Constructor)) return;
-
-			const sharedComponentConstructor = this.getSharedComponent(componentConstructor);
-			if (!sharedComponentConstructor) return;
-
-			const identifier = this.getConstructorIdentifier(componentConstructor);
-			const tree = this.getInheritanceTree<SharedComponent<object>>(componentConstructor);
-
-			this.sharedComponentContructors.set(
-				componentConstructor as Constructor<SharedComponent<object>>,
-				sharedComponentConstructor,
-			);
-			this.sharedcomponentTrees.set(componentConstructor, tree);
-
-			if (!this.instanceOfSharedComponent(componentConstructor)) return;
-
-			metadata.set(identifier, this.idGenerator.Next());
-		});
-
-		rootProducer.SetComponentMetadatas(metadata);
 	}
 }

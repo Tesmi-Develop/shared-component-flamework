@@ -1,15 +1,16 @@
 import { Component } from "@flamework/components";
 import { OnStart } from "@flamework/core";
-import { ValueStorageComponent } from "shared/components/valueStorageComponent";
-import { Action } from "../../source/decorators";
+import { ValueStorageComponent, ValueStorageComponentPointer } from "shared/components/valueStorageComponent";
 import { Players } from "@rbxts/services";
 
 @Component({
 	tag: "ValueStorageComponent",
 })
 export class ServerValueStorageComponent extends ValueStorageComponent implements OnStart {
+	protected pointer = ValueStorageComponentPointer;
+	
 	onStart(): void {
-		task.spawn(() => {
+		/*task.spawn(() => {
 			const instance = this.instance;
 			let k = 0;
 			while (task.wait(3)) {
@@ -17,18 +18,26 @@ export class ServerValueStorageComponent extends ValueStorageComponent implement
 				k++;
 			}
 			this.destroy();
+		});*/
+
+		this.Subscribe(
+			(state) => state.value,
+			(val) => print(`server value: ${val}`),
+		);
+
+		this.Dispatch({
+			value: 10,
 		});
 	}
 
-	public ResolveReplicationForPlayers() {
-		return Players.GetPlayers()[0];
+	public ResolveReplicationForPlayers(player: Player) {
+		return Players.GetPlayers()[0] === player;
 	}
 
 	public destroy(): void {
 		super.destroy();
 	}
 
-	@Action()
 	private increment() {
 		return {
 			...this.state,

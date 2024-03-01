@@ -1,6 +1,12 @@
+import { Reflect } from "@flamework/core";
+import { Constructor } from "@flamework/core/out/utility";
 import { RunService } from "@rbxts/services";
 
 type GeneratorIdReturning<T extends boolean> = T extends true ? string : number;
+
+interface ConstructorWithIndex extends Constructor {
+	__index: object;
+}
 
 export const CreateGeneratorId = <C extends boolean>(isString = false as C) => {
 	const instance = {
@@ -32,4 +38,22 @@ export function logWarning(Message: string) {
 
 export function logAssert<T>(condition: T, message?: string, DisplayTraceback = true): asserts condition {
 	!condition && logError(message, DisplayTraceback);
+}
+
+export function GetConstructorIdentifier(constructor: Constructor) {
+	return (Reflect.getMetadata(constructor, "identifier") as string) ?? "Not found id";
+}
+
+export function GetInheritanceTree<T>(constructor: Constructor, parent: Constructor) {
+	let currentClass = constructor as ConstructorWithIndex;
+	let metatable = getmetatable(currentClass) as ConstructorWithIndex;
+	const tree = [constructor] as Constructor<T>[];
+
+	while (currentClass && metatable.__index !== parent) {
+		currentClass = metatable.__index as ConstructorWithIndex;
+		metatable = getmetatable(currentClass) as ConstructorWithIndex;
+		tree.push(currentClass as unknown as Constructor<T>);
+	}
+
+	return tree;
 }

@@ -13,3 +13,10 @@ export interface WrapSubscriber {
 	OnlyClient: () => () => void;
 	Disconnect: () => void;
 }
+
+export interface SharedComponentInfo {
+	Instance: Instance;
+	Identifier: string;
+	SharedIdentifier: string;
+	PointerID?: string;
+}
