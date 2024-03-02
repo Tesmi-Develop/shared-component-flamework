@@ -133,8 +133,8 @@ abstract class SharedComponent<S extends object = {}, A extends object = {}, I e
 				remotes._shared_component_start.fire(this.instance);
 			},
 
-			OnHydration: () => {
-				this.state = this.producer.getState();
+			OnHydration: (state: S) => {
+				this.state = state;
 			},
 
 			OnPatch: (action) => {
