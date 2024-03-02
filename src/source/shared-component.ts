@@ -134,6 +134,7 @@ abstract class SharedComponent<S extends object = {}, A extends object = {}, I e
 			},
 
 			OnPatch: (action) => {
+				this.state = this.producer.getState();
 				if (!this.isEnableDevTool) return;
 
 				event.FireServer({
@@ -194,6 +195,7 @@ abstract class SharedComponent<S extends object = {}, A extends object = {}, I e
 
 	public destroy() {
 		super.destroy();
+		this.broadcaster?.destroy();
 		this._classProducerLink.Destroy();
 	}
 }
