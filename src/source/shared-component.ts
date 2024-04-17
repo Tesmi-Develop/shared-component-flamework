@@ -99,7 +99,11 @@ abstract class SharedComponent<S extends object = {}, A extends object = {}, I e
 		IsClient && this._onStartClient();
 	}
 
-	public ResolveReplicationForPlayers(player: Player): boolean {
+	public ResolveDispatchForPlayer(player: Player, action: BroadcastAction): boolean {
+		return true;
+	}
+
+	public ResolveHydrateForPlayer(player: Player, state: S): boolean {
 		return true;
 	}
 
@@ -111,11 +115,11 @@ abstract class SharedComponent<S extends object = {}, A extends object = {}, I e
 			},
 
 			beforeDispatch: (player: Player, action) => {
-				return this.ResolveReplicationForPlayers(player) ? action : undefined;
+				return this.ResolveDispatchForPlayer(player, action) ? action : undefined;
 			},
 
 			beforeHydrate: (player, state) => {
-				return this.ResolveReplicationForPlayers(player) ? state : undefined;
+				return this.ResolveHydrateForPlayer(player, state) ? state : undefined;
 			},
 		});
 
