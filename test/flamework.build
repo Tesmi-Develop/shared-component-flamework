@@ -15,7 +15,8 @@
 		"@rbxts/shared-components-flamework:out/src/source/pointer/init@Pointer": "$s:src/source/pointer/init@Pointer",
 		"@rbxts/shared-components-flamework:out/src/source/shared-component-handler@A": "$s:src/source/shared-component-handler@A",
 		"@rbxts/shared-components-flamework:out/src/source/shared-component-handler@IMovable": "$s:src/source/shared-component-handler@IMovable",
-		"@rbxts/shared-components-flamework:out/src/source/shared-component-handler@B": "$s:src/source/shared-component-handler@B"
+		"@rbxts/shared-components-flamework:out/src/source/shared-component-handler@B": "$s:src/source/shared-component-handler@B",
+		"@rbxts/shared-components-flamework:out/src/source/shared-action@SharedAction": "$s:src/source/shared-action@SharedAction"
 	},
 	"metadata": {},
 	"identifierPrefix": "$s",

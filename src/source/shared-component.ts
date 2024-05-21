@@ -13,6 +13,7 @@ import { remotes } from "../remotes";
 import { Constructor } from "@flamework/core/out/utility";
 import { SharedComponentInfo } from "../types";
 import { Pointer } from "./pointer";
+import { ISharedAction, SharedAction } from "./shared-action";
 
 const IsServer = RunService.IsServer();
 const IsClient = RunService.IsClient();
@@ -46,12 +47,47 @@ abstract class SharedComponent<S extends object = {}, A extends object = {}, I e
 	/** @client */
 	protected isBlockingServerDispatches = false;
 	private isEnableDevTool = false;
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	protected actions: Record<string, ISharedAction<any[], any>> = {};
 
 	constructor() {
 		super();
 		classProducerConstructor(this);
+		this.initSharedActions();
+
 		this._classProducerLink = this as unknown as IClassProducer;
 		this.tree = GetInheritanceTree(this.getConstructor(), SharedComponent as Constructor);
+	}
+
+	/** @internal @hidden */
+	public InvokeAction(player: Player, key: string, args: unknown[]) {
+		return this.actions[key].GetServerCallback()(player, ...args);
+	}
+
+	private initSharedActions() {
+		this.actions = undefined as never;
+
+		const mt = getmetatable(this) as {
+			__newindex: (t: object, index: string, value: {}) => void;
+		};
+		const orig = mt.__newindex;
+
+		const callback = (t: object, index: string, value: object) => {
+			rawset(t, index, value as SharedAction);
+			orig(t, index, value);
+			mt.__newindex = callback as never;
+			if (index !== "actions") return;
+
+			for (const [i, action] of pairs(value)) {
+				const newAction = action as SharedAction;
+				newAction.componentReferense = this;
+				newAction.actionName = i as string;
+			}
+
+			mt.__newindex = this.producer ? (undefined as never) : (orig as never);
+		};
+
+		mt.__newindex = callback;
 	}
 
 	private getConstructor() {
@@ -103,8 +139,8 @@ abstract class SharedComponent<S extends object = {}, A extends object = {}, I e
 		return true;
 	}
 
-	public ResolveHydrateForPlayer(player: Player, state: S): boolean {
-		return true;
+	public ResolveHydrateForPlayer(player: Player, state: S): S | undefined {
+		return;
 	}
 
 	private _onStartServer() {
@@ -119,7 +155,7 @@ abstract class SharedComponent<S extends object = {}, A extends object = {}, I e
 			},
 
 			beforeHydrate: (player, state) => {
-				return this.ResolveHydrateForPlayer(player, state) ? state : undefined;
+				return this.ResolveHydrateForPlayer(player, state);
 			},
 		});
 

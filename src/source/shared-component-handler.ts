@@ -2,7 +2,7 @@ import { Controller, Modding, OnInit, Service } from "@flamework/core";
 import { BroadcastAction } from "@rbxts/reflex";
 import { remotes } from "../remotes";
 import { SharedComponent } from "./shared-component";
-import { IsClient, logWarning } from "../utilities";
+import { IsClient, IsServer, logWarning } from "../utilities";
 import { SharedComponentInfo } from "../types";
 import { Components } from "@flamework/components";
 import { Pointer } from "./pointer";
@@ -27,16 +27,14 @@ export class SharedComponentHandler implements OnInit {
 	public onInit() {
 		Modding.onListenerAdded<onSetupSharedComponent>((val) => val.onSetup());
 		IsClient && this.onClientSetup();
+		IsServer && this.onServerSetup();
 	}
 
 	private invokeDispatch(component: SharedComponent, actions: BroadcastAction[]) {
 		component.__DispatchFromServer(actions);
 	}
 
-	private resolveDispatch(
-		actions: BroadcastAction[],
-		{ Instance, Identifier, SharedIdentifier, PointerID }: SharedComponentInfo,
-	) {
+	private resolveComponent({ Instance, Identifier, SharedIdentifier, PointerID }: SharedComponentInfo) {
 		if (!Modding.getObjectFromId(SharedIdentifier)) {
 			logWarning(
 				`Attempt to allow dispatching, but shared component does not exist\n SharedIdentifier: ${SharedIdentifier}`,
@@ -58,7 +56,7 @@ export class SharedComponentHandler implements OnInit {
 					Instance,
 					pointer.GetComponentMetadata(),
 				);
-				component && this.invokeDispatch(component, actions);
+				if (component) return component;
 			} catch (error) {
 				logWarning(`${error}\n PointerID: ${PointerID}`);
 			}
@@ -69,7 +67,7 @@ export class SharedComponentHandler implements OnInit {
 		// Try get component from indentifier
 		if (Modding.getObjectFromId(Identifier)) {
 			const component = this.components.getComponent<SharedComponent>(Instance, Identifier);
-			component && this.invokeDispatch(component, actions);
+			if (component) return component;
 		}
 
 		// Try get component from shared identifier
@@ -82,12 +80,20 @@ export class SharedComponentHandler implements OnInit {
 			return;
 		}
 
-		this.invokeDispatch(sharedComponent[0], actions);
+		return sharedComponent[0];
 	}
 
 	private onClientSetup() {
 		remotes._shared_component_dispatch.connect((actions, componentInfo) => {
-			this.resolveDispatch(actions, componentInfo);
+			const component = this.resolveComponent(componentInfo);
+			component && this.invokeDispatch(component, actions);
+		});
+	}
+
+	private onServerSetup() {
+		remotes._shared_component_action.onRequest((player, componentInfo, actionName, args) => {
+			const component = this.resolveComponent(componentInfo);
+			return component?.InvokeAction(player, actionName, args);
 		});
 	}
 }
