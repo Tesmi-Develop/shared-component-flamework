@@ -1,10 +1,10 @@
-import { Controller, Modding, OnInit, Service } from "@flamework/core";
+import { Controller, Modding, OnInit, Reflect, Service } from "@flamework/core";
 import { BroadcastAction } from "@rbxts/reflex";
 import { remotes } from "../remotes";
 import { SharedComponent } from "./shared-component";
-import { IsClient, IsServer, logWarning } from "../utilities";
+import { GetParentConstructor, IsClient, IsServer, logWarning } from "../utilities";
 import { SharedComponentInfo } from "../types";
-import { Components } from "@flamework/components";
+import { BaseComponent, Component, Components } from "@flamework/components";
 import { Pointer } from "./pointer";
 import {
 	IsSharedComponentRemoteEvent,
@@ -12,6 +12,8 @@ import {
 	SharedRemoteEventServerToClient,
 } from "./shared-component-network/event";
 import { ACTION_GUARD_FAILED, SharedRemoteAction } from "./shared-component-network/action";
+import { Players } from "@rbxts/services";
+import { AbstractConstructor, ConstructorRef, getComponentFromSpecifier } from "@flamework/components/out/utility";
 
 export interface onSetupSharedComponent {
 	onSetup(): void;
@@ -24,6 +26,9 @@ export interface onSetupSharedComponent {
 	loadOrder: 0,
 })
 export class SharedComponentHandler implements OnInit {
+	private classParentCache = new Map<AbstractConstructor, readonly AbstractConstructor[]>();
+	private polymorphicIds = new Map<AbstractConstructor, readonly string[]>();
+
 	constructor(private components: Components) {}
 
 	/**
@@ -31,13 +36,133 @@ export class SharedComponentHandler implements OnInit {
 	 * @internal
 	 */
 	public onInit() {
+		const componentConstructors = Modding.getDecorators<typeof Component>();
+
+		componentConstructors.forEach(({ constructor }) => {
+			if (!constructor) return;
+			this.polymorphicIds.set(constructor, this.getPolymorphicIds(constructor));
+		});
+
 		Modding.onListenerAdded<onSetupSharedComponent>((val) => val.onSetup());
 		IsClient && this.onClientSetup();
 		IsServer && this.onServerSetup();
 	}
 
+	private getSharedComponentChild(componentSpecifier: string) {
+		let found: string | undefined;
+
+		this.polymorphicIds.forEach((ids, component) => {
+			const index = ids.indexOf(componentSpecifier);
+			if (index === -1) return;
+			if (index === 0) return;
+
+			if (index - 1 !== 0) {
+				logWarning(
+					`Sharedcomponent has more than one child\n Instance: ${Instance}\n SharedIdentifier: ${componentSpecifier}`,
+				);
+				return;
+			}
+
+			found = ids[index - 1];
+		});
+
+		return found;
+	}
+
+	private getOrderedParents(ctor: AbstractConstructor, omitBaseComponent = true) {
+		const cache = this.classParentCache.get(ctor);
+		if (cache) return cache;
+
+		const classes = [ctor];
+		let nextParent: AbstractConstructor | undefined = ctor;
+		while ((nextParent = GetParentConstructor(nextParent)) !== undefined) {
+			if (!omitBaseComponent || nextParent !== BaseComponent) {
+				classes.push(nextParent);
+			}
+		}
+
+		this.classParentCache.set(ctor, classes);
+		return classes;
+	}
+
+	private getPolymorphicIds(component: AbstractConstructor) {
+		const ids = new Array<string>();
+
+		for (const parentClass of this.getOrderedParents(component)) {
+			const parentId = Reflect.getOwnMetadata<string>(parentClass, "identifier");
+			if (parentId === undefined) continue;
+
+			ids.push(parentId);
+		}
+
+		const implementedList = Reflect.getMetadatas<string[]>(component, "flamework:implements");
+		for (const implemented of implementedList) {
+			for (const id of implemented) {
+				ids.push(id);
+			}
+		}
+
+		return ids;
+	}
+
+	/**
+	 * @metadata macro
+	 * @server
+	 * */
+	public AddSharedComponent<T extends SharedComponent>(
+		player: Player | Player[] | "All",
+		instance: Instance,
+		componentSpecifier?: ConstructorRef<T>,
+	) {
+		assert(IsServer, "AddSharedComponent can't be called on server");
+		assert(componentSpecifier, "Missing component specifier");
+
+		const players = player === "All" ? Players.GetPlayers() : typeIs(player, "Instance") ? [player] : player;
+		const component = this.components.addComponent(instance, componentSpecifier);
+		const sharedInfo = component.GenerateInfo();
+
+		players.forEach((player) => remotes._shared_component_component_interaction.fire(player, sharedInfo, "Add"));
+	}
+
+	/**
+	 * @metadata macro
+	 * @server
+	 * */
+	public RemoveSharedComponent<T extends SharedComponent>(
+		player: Player | Player[] | "All",
+		instance: Instance,
+		componentSpecifier?: ConstructorRef<T>,
+	) {
+		assert(IsServer, "AddSharedComponent can't be called on server");
+		assert(componentSpecifier, "Missing component specifier");
+
+		const players = player === "All" ? Players.GetPlayers() : typeIs(player, "Instance") ? [player] : player;
+		const component = this.components.getComponent(instance, componentSpecifier);
+		if (!component) return;
+
+		const sharedInfo = component.GenerateInfo();
+		this.components.removeComponent(instance, componentSpecifier);
+
+		players.forEach((player) => remotes._shared_component_component_interaction.fire(player, sharedInfo, "Remove"));
+	}
+
 	private invokeDispatch(component: SharedComponent, actions: BroadcastAction[]) {
 		component.__DispatchFromServer(actions);
+	}
+
+	private getComponentFromPointer(PointerID: string) {
+		const pointer = Pointer.GetPointer(PointerID);
+
+		if (!pointer) {
+			logWarning(`Attempt to dispatch component with missing pointer\n PointerID: ${PointerID}`);
+			return;
+		}
+
+		try {
+			return pointer.GetComponentMetadata();
+		} catch (error) {
+			logWarning(`${error}\n PointerID: ${PointerID}`);
+		}
 	}
 
 	private resolveComponent({ Instance, Identifier, SharedIdentifier, PointerID }: SharedComponentInfo) {
@@ -105,6 +230,19 @@ export class SharedComponentHandler implements OnInit {
 			if (!remote.GetGuard()(args)) return;
 
 			remote.GetSignal().Fire(...(args as []));
+		});
+
+		remotes._shared_component_component_interaction.connect((info, action) => {
+			const componetID = info.PointerID
+				? this.getComponentFromPointer(info.PointerID)
+				: info.SharedIdentifier === info.Identifier
+					? info.SharedIdentifier
+					: this.getSharedComponentChild(info.SharedIdentifier);
+			if (!componetID) return;
+
+			action === "Add"
+				? this.components.addComponent(info.Instance, componetID)
+				: this.components.removeComponent(info.Instance, componetID);
 		});
 	}
 

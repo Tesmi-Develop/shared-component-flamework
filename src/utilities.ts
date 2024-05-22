@@ -1,5 +1,5 @@
 import { Reflect } from "@flamework/core";
-import { Constructor } from "@flamework/core/out/utility";
+import { AbstractConstructor, Constructor } from "@flamework/core/out/utility";
 import { RunService } from "@rbxts/services";
 
 type GeneratorIdReturning<T extends boolean> = T extends true ? string : number;
@@ -44,13 +44,21 @@ export function GetConstructorIdentifier(constructor: Constructor) {
 	return (Reflect.getMetadata(constructor, "identifier") as string) ?? "Not found id";
 }
 
+export function GetParentConstructor(ctor: AbstractConstructor) {
+	const metatable = getmetatable(ctor) as { __index?: object };
+	if (metatable && typeIs(metatable, "table")) {
+		const parentConstructor = rawget(metatable, "__index") as AbstractConstructor;
+		return parentConstructor;
+	}
+}
+
 export function GetInheritanceTree<T>(constructor: Constructor, parent: Constructor) {
 	let currentClass = constructor as ConstructorWithIndex;
 	let metatable = getmetatable(currentClass) as ConstructorWithIndex;
 	const tree = [constructor] as Constructor<T>[];
 
-	while (currentClass && metatable.__index !== parent) {
-		currentClass = metatable.__index as ConstructorWithIndex;
+	while (currentClass && rawget(metatable, "__index") !== parent) {
+		currentClass = rawget(metatable, "__index") as ConstructorWithIndex;
 		metatable = getmetatable(currentClass) as ConstructorWithIndex;
 		tree.push(currentClass as unknown as Constructor<T>);
 	}

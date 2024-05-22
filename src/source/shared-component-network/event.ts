@@ -103,7 +103,7 @@ export class SharedRemoteEventServerToClient<A extends unknown[]> implements ISh
 	}
 
 	public Destroy() {
-		this.signal.Destroy();
+		this.signal?.Destroy();
 	}
 }
 
@@ -163,6 +163,6 @@ export class SharedRemoteEventClientToServer<A extends unknown[]> implements ISh
 	}
 
 	public Destroy() {
-		this.signal.Destroy();
+		this.signal?.Destroy();
 	}
 }

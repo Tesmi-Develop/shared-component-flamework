@@ -20,15 +20,13 @@ export class Pointer {
 		const newPointer = new Pointer();
 		Pointer.pointers.set(id, newPointer);
 		Pointer.pointerID.set(newPointer, id);
-	
+
 		return newPointer;
 	}
 
 	private getConstructor(component: SharedComponent | Constructor<SharedComponent>) {
 		const constructor = getmetatable(component) as typeof SharedComponent;
-		return component instanceof constructor
-			? (getmetatable(component) as Constructor<SharedComponent>)
-			: component;
+		return component instanceof constructor ? (getmetatable(component) as Constructor<SharedComponent>) : component;
 	}
 
 	public AddComponent(component: SharedComponent | Constructor<SharedComponent>) {
