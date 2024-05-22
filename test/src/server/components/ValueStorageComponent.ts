@@ -1,16 +1,21 @@
 import { Component } from "@flamework/components";
 import { OnStart } from "@flamework/core";
-import { ValueStorageComponent, ValueStorageComponentPointer } from "shared/components/valueStorageComponent";
+import { ValueStorageComponent } from "shared/components/valueStorageComponent";
 
 @Component({
 	tag: "ValueStorageComponent",
 })
 export class ServerValueStorageComponent extends ValueStorageComponent implements OnStart {
-	protected pointer = ValueStorageComponentPointer;
-
 	onStart() {
-		this.actions.Increment.OnRequest((player, amount) => {
-			print(`server increment: ${amount}`, player);
+		this.remotes.IncrementByClient.Connect((player, amount) => {
+			print(`incrementing by ${amount}, player: ${player}`);
 		});
+
+		this.remotes.Increment.OnRequest((amount) => {
+			print(`Action: incrementing by ${amount}`);
+		});
+
+		task.wait(math.random(5, 10));
+		this.remotes.IncrementByServer.Broadcast(1);
 	}
 }

@@ -6,6 +6,12 @@ import { IsClient, IsServer, logWarning } from "../utilities";
 import { SharedComponentInfo } from "../types";
 import { Components } from "@flamework/components";
 import { Pointer } from "./pointer";
+import {
+	IsSharedComponentRemoteEvent,
+	SharedRemoteEventClientToServer,
+	SharedRemoteEventServerToClient,
+} from "./shared-component-network/event";
+import { ACTION_GUARD_FAILED, SharedRemoteAction } from "./shared-component-network/action";
 
 export interface onSetupSharedComponent {
 	onSetup(): void;
@@ -88,12 +94,43 @@ export class SharedComponentHandler implements OnInit {
 			const component = this.resolveComponent(componentInfo);
 			component && this.invokeDispatch(component, actions);
 		});
+
+		remotes._shared_component_remote_event_Client.connect((componentInfo, eventName, args) => {
+			const component = this.resolveComponent(componentInfo);
+			if (!component) return;
+
+			const remote = component.GetRemote(eventName);
+			if (!IsSharedComponentRemoteEvent(remote)) return;
+			if (!SharedRemoteEventServerToClient.Indefinitely(remote)) return;
+			if (!remote.GetGuard()(args)) return;
+
+			remote.GetSignal().Fire(...(args as []));
+		});
 	}
 
 	private onServerSetup() {
-		remotes._shared_component_action.onRequest((player, componentInfo, actionName, args) => {
+		remotes._shared_component_remote_event_Server.connect((player, componentInfo, eventName, args) => {
 			const component = this.resolveComponent(componentInfo);
-			return component?.InvokeAction(player, actionName, args);
+			if (!component) return;
+
+			const remote = component.GetRemote(eventName);
+			if (!IsSharedComponentRemoteEvent(remote)) return;
+			if (!SharedRemoteEventClientToServer.Indefinitely(remote)) return;
+			if (!remote.GetGuard()(args)) return;
+
+			remote.GetSignal().Fire(player, ...(args as []));
+		});
+
+		remotes._shared_component_remote_function_Server.onRequest((player, componentInfo, remoteName, args) => {
+			const component = this.resolveComponent(componentInfo);
+			if (!component) return;
+
+			const remote = component.GetRemote(remoteName);
+			if (!IsSharedComponentRemoteEvent(remote)) return;
+			if (!SharedRemoteAction.Indefinitely(remote)) return;
+			if (!remote.GetGuard()(args)) return ACTION_GUARD_FAILED;
+
+			return remote.GetCallback()?.(...(args as []));
 		});
 	}
 }

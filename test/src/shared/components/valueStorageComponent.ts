@@ -1,15 +1,12 @@
 import { Component } from "@flamework/components";
 import { SharedComponent } from "../../source/shared-component";
-import { CreatePointer } from "../../source/pointer";
-import { SharedAction } from "../../source/shared-action";
+import { ClientToServer, ServerToClient, SharedComponentNetwork } from "../../source/shared-component-network";
 
 interface State {
 	value: number;
 	a: number;
 	b: number;
 }
-
-export const ValueStorageComponentPointer = CreatePointer("ValueStorageComponent");
 
 @Component()
 export class ValueStorageComponent extends SharedComponent<State> {
@@ -18,7 +15,9 @@ export class ValueStorageComponent extends SharedComponent<State> {
 		a: 1,
 		b: 2,
 	};
-	protected actions = {
-		Increment: SharedAction.Create<[amount: number], void>(),
+	protected remotes = {
+		IncrementByServer: SharedComponentNetwork.event<ServerToClient, [amount: number]>(),
+		IncrementByClient: SharedComponentNetwork.event<ClientToServer, [amount: number]>(),
+		Increment: SharedComponentNetwork.action<[amount: number], void>(),
 	};
 }

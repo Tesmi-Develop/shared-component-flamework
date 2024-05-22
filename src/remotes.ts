@@ -9,9 +9,21 @@ export const remotes = createRemotes({
 		Flamework.createGuard(),
 		Flamework.createGuard(),
 	),
-	_shared_component_action: remote<Server, [componentInfo: SharedComponentInfo, actionName: string, args: unknown[]]>(
-		Flamework.createGuard(),
-		Flamework.createGuard(),
-	).returns<unknown>(),
+
+	_shared_component_remote_function_Server: remote<
+		Server,
+		[componentInfo: SharedComponentInfo, remoteName: string, args: unknown[]]
+	>(Flamework.createGuard(), Flamework.createGuard()).returns<unknown>(),
+
+	_shared_component_remote_event_Server: remote<
+		Server,
+		[componentInfo: SharedComponentInfo, eventName: string, args: unknown[]]
+	>(Flamework.createGuard(), Flamework.createGuard()),
+
+	_shared_component_remote_event_Client: remote<
+		Client,
+		[componentInfo: SharedComponentInfo, eventName: string, args: unknown[]]
+	>(Flamework.createGuard(), Flamework.createGuard()),
+
 	_shared_component_start: remote<Server, [instance: Instance]>(t.Instance),
 });

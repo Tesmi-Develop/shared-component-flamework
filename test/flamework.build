@@ -16,7 +16,15 @@
 		"@rbxts/shared-components-flamework:out/src/source/shared-component-handler@A": "$s:src/source/shared-component-handler@A",
 		"@rbxts/shared-components-flamework:out/src/source/shared-component-handler@IMovable": "$s:src/source/shared-component-handler@IMovable",
 		"@rbxts/shared-components-flamework:out/src/source/shared-component-handler@B": "$s:src/source/shared-component-handler@B",
-		"@rbxts/shared-components-flamework:out/src/source/shared-action@SharedAction": "$s:src/source/shared-action@SharedAction"
+		"@rbxts/shared-components-flamework:out/src/source/shared-action@SharedAction": "$s:src/source/shared-action@SharedAction",
+		"@rbxts/shared-components-flamework:out/src/source/shared-component-network@SharedAction": "$s:src/source/shared-component-network@SharedAction",
+		"@rbxts/shared-components-flamework:out/src/source/shared-component-network/event@SharedRemoteEventServerToClient": "$s:src/source/shared-component-network/event@SharedRemoteEventServerToClient",
+		"@rbxts/shared-components-flamework:out/src/source/shared-component-network/event@SharedRemoteEventClient": "$s:src/source/shared-component-network/event@SharedRemoteEventClient",
+		"@rbxts/shared-components-flamework:out/src/source/shared-component-network/event@SharedRemoteEventClientToServer": "$s:src/source/shared-component-network/event@SharedRemoteEventClientToServer",
+		"@rbxts/shared-components-flamework:out/src/source/shared-component-network/init@SharedAction": "$s:src/source/shared-component-network/init@SharedAction",
+		"@rbxts/shared-components-flamework:out/src/source/shared-component-network/action@SharedRemoteFunctionServerToClient": "$s:src/source/shared-component-network/action@SharedRemoteFunctionServerToClient",
+		"@rbxts/shared-components-flamework:out/src/source/shared-component-network/action@SharedRemoteFunction": "$s:src/source/shared-component-network/action@SharedRemoteFunction",
+		"@rbxts/shared-components-flamework:out/src/source/shared-component-network/action@SharedRemoteAction": "$s:src/source/shared-component-network/action@SharedRemoteAction"
 	},
 	"metadata": {},
 	"identifierPrefix": "$s",

@@ -13,7 +13,7 @@ import { remotes } from "../remotes";
 import { Constructor } from "@flamework/core/out/utility";
 import { SharedComponentInfo } from "../types";
 import { Pointer } from "./pointer";
-import { ISharedAction, SharedAction } from "./shared-action";
+import { ISharedNetwork } from "./shared-component-network";
 
 const IsServer = RunService.IsServer();
 const IsClient = RunService.IsClient();
@@ -48,7 +48,7 @@ abstract class SharedComponent<S extends object = {}, A extends object = {}, I e
 	protected isBlockingServerDispatches = false;
 	private isEnableDevTool = false;
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	protected actions: Record<string, ISharedAction<any[], any>> = {};
+	protected readonly remotes!: Record<string, ISharedNetwork>;
 
 	constructor() {
 		super();
@@ -60,34 +60,22 @@ abstract class SharedComponent<S extends object = {}, A extends object = {}, I e
 	}
 
 	/** @internal @hidden */
-	public InvokeAction(player: Player, key: string, args: unknown[]) {
-		return this.actions[key].GetServerCallback()(player, ...args);
+	public GetRemote(name: string) {
+		return this.remotes[name as never];
 	}
 
 	private initSharedActions() {
-		this.actions = undefined as never;
+		const ctor = getmetatable(this) as { onStart?: (context: SharedComponent) => void };
+		const original = ctor.onStart;
 
-		const mt = getmetatable(this) as {
-			__newindex: (t: object, index: string, value: {}) => void;
-		};
-		const orig = mt.__newindex;
-
-		const callback = (t: object, index: string, value: object) => {
-			rawset(t, index, value as SharedAction);
-			orig(t, index, value);
-			mt.__newindex = callback as never;
-			if (index !== "actions") return;
-
-			for (const [i, action] of pairs(value)) {
-				const newAction = action as SharedAction;
-				newAction.componentReferense = this;
-				newAction.actionName = i as string;
+		ctor.onStart = function (this: SharedComponent) {
+			for (const [i, remote] of pairs(this.remotes)) {
+				const newRemote = remote as ISharedNetwork;
+				newRemote.componentReferense = this;
+				newRemote.name = i as string;
 			}
-
-			mt.__newindex = this.producer ? (undefined as never) : (orig as never);
+			original?.(this);
 		};
-
-		mt.__newindex = callback;
 	}
 
 	private getConstructor() {
@@ -241,6 +229,10 @@ abstract class SharedComponent<S extends object = {}, A extends object = {}, I e
 		super.destroy();
 		this.broadcaster?.destroy();
 		this._classProducerLink.Destroy();
+
+		for (const [name, remote] of pairs(this.remotes)) {
+			remote.Destroy();
+		}
 	}
 }
 

@@ -7,6 +7,10 @@ import { OnStart } from "@flamework/core";
 })
 export class ClientValueStorageComponent extends ValueStorageComponent implements OnStart {
 	onStart(): void {
-		this.actions.Increment(1);
+		this.remotes.IncrementByServer.Connect((amount: number) => {
+			print(`incrementing by ${amount}`);
+		});
+		this.remotes.IncrementByClient.Fire(1);
+		this.remotes.Increment(1);
 	}
 }
