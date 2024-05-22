@@ -91,7 +91,7 @@ export class ServerComponent extends SomeSharedComponent implements OnStart {
 @Component({
 	tag: "SomeSharedComponent",
 })
-export class ClientComponent extends ValueStorageComponent implements OnStart {
+export class ClientComponent extends SomeSharedComponent implements OnStart {
 	public onStart() {
 		this.remotes.ClientEvent.Connect((amount: number) => {
 			print(`value = ${amount}`);
