@@ -6,7 +6,10 @@
 		"@rbxts/shared-components-flamework:out/source/shared-component@SharedComponent": "$s:source/shared-component@SharedComponent",
 		"@rbxts/shared-components-flamework:out/source/shared-component-handler@SharedComponentHandler": "$s:source/shared-component-handler@SharedComponentHandler",
 		"@rbxts/shared-components-flamework:out/source/shared-component-handler@onSetupSharedComponent": "$s:source/shared-component-handler@onSetupSharedComponent",
-		"@rbxts/shared-components-flamework:out/source/shared-action@SharedAction": "$s:source/shared-action@SharedAction"
+		"@rbxts/shared-components-flamework:out/source/shared-action@SharedAction": "$s:source/shared-action@SharedAction",
+		"@rbxts/shared-components-flamework:out/source/shared-component-network/action@SharedRemoteAction": "$s:source/shared-component-network/action@SharedRemoteAction",
+		"@rbxts/shared-components-flamework:out/source/shared-component-network/event@SharedRemoteEventServerToClient": "$s:source/shared-component-network/event@SharedRemoteEventServerToClient",
+		"@rbxts/shared-components-flamework:out/source/shared-component-network/event@SharedRemoteEventClientToServer": "$s:source/shared-component-network/event@SharedRemoteEventClientToServer"
 	},
 	"metadata": {},
 	"identifierPrefix": "$s",

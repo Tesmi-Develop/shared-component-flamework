@@ -6,44 +6,6 @@ This package is reflex-based, so it is important to know how to work with it to 
 A code snippet showing you how to create the shared component.
 
 ```ts
-// -->> Patern when server and client code in the same class <<--
-interface State {
-	money: number;
-}
-
-@Component({
-	tag: `${MoneyStorageComponent}`,
-})
-export class MoneyStorageComponent extends SharedComponent<State> implements OnStart {
-	protected state: State = {
-		money: 0,
-	};
-
-	public onStart() {
-		if (RunService.IsServer()) {
-			task.spawn(() => {
-				while (task.wait(10)) {
-					this.increateMoney(1);
-				}
-			});
-		}
-	}
-
-	@SharedSubscribe("Client", (state) => state.money)
-	private onChangedMoney(money: number) {
-		print(`new count money: ${money}`);
-	}
-
-	@Action()
-	private incrementMoney(money: number) {
-		return {
-			...this.state,
-			money: this.state.money + money,
-		};
-	}
-}
-
-// -->> Patern with a shared superclass <<--
 // shared
 interface State {
 	value: number;
@@ -61,7 +23,7 @@ export class ValueStorageComponent extends SharedComponent<State> {
 	tag: "ValueStorageComponent",
 })
 export class ServerValueStorageComponent extends ValueStorageComponent implements OnStart {
-	onStart(): void {
+	public onStart() {
 		task.spawn(() => {
 			while (task.wait(3)) {
 				this.increment();
@@ -91,6 +53,55 @@ export class ClientValueStorageComponent extends ValueStorageComponent {
 
 ```
 
+## Networking
+With this package you can declare remote event, action inside the component, this will allow you to easily make interaction between server and client component 
+
+```ts
+@Component()
+export class SomeSharedComponent extends SharedComponent<{}> {
+	protected state = {};
+
+	protected remotes = {
+		ClientEvent: SharedComponentNetwork.event<ServerToClient, [value: number]>(),
+		ServerEvent: SharedComponentNetwork.event<ClientToServer, [value: number]>(),
+		Action: SharedComponentNetwork.action<[value: number], void>(),
+	};
+}
+
+// server
+@Component({
+	tag: "SomeSharedComponent",
+})
+export class ServerComponent extends SomeSharedComponent implements OnStart {
+	public onStart() {
+		this.remotes.ServerEvent.Connect((player, amount) => {
+			print(`value = ${amount}, player: ${player}`);
+		});
+
+		this.remotes.Action.OnRequest((amount) => {
+			print(`Action: value = ${amount}`);
+		});
+
+		task.wait(5);
+		this.remotes.ClientEvent.Broadcast(1);
+	}
+}
+
+// client
+@Component({
+	tag: "SomeSharedComponent",
+})
+export class ClientComponent extends ValueStorageComponent implements OnStart {
+	public onStart() {
+		this.remotes.ClientEvent.Connect((amount: number) => {
+			print(`value = ${amount}`);
+		});
+		this.remotes.ServerEvent.Fire(1);
+		this.remotes.Action(1);
+	}
+}
+```
+
 ## API
 
 * SharedComponent<S, A, I>
@@ -101,11 +112,6 @@ Accepts three generics("S" - type describing the state of the component, "A" - a
 * @Action()
   
 Decorator turns your method into action. (action is a function that changes the state of your component).
-
-* @SharedSubscribe(side: "Server" | "Client" | "Both", selector, predicate?)
-  
-This decorator subscribes your method to listen for a state change.  
-side - argument that indicates which side will subscribe this method to listen for state.
 
 * @Subscribe(selector, predicate?)
   
