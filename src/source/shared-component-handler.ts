@@ -64,14 +64,7 @@ export class SharedComponentHandler implements OnInit {
 			if (index === -1) return;
 			if (index === 0) return;
 
-			if (index - 1 !== 0) {
-				logWarning(
-					`Sharedcomponent has more than one child\n Instance: ${Instance}\n SharedIdentifier: ${componentSpecifier}`,
-				);
-				return;
-			}
-
-			found = ids[index - 1];
+			found = ids[0];
 		});
 
 		return found;
@@ -266,7 +259,9 @@ export class SharedComponentHandler implements OnInit {
 		remotes._shared_component_component_interaction.connect((info, action) => {
 			const componetID = info.PointerID
 				? this.getComponentFromPointer(info.PointerID)
-				: this.getSharedComponentChild(info.Identifier);
+				: info.SharedIdentifier === info.Identifier
+					? info.SharedIdentifier
+					: this.getSharedComponentChild(info.SharedIdentifier);
 			if (!componetID) return;
 
 			action === "Add"
