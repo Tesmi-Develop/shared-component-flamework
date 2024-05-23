@@ -26,7 +26,7 @@ export class SharedRemoteAction<A extends unknown[], R> implements ISharedNetwor
 	public name!: string;
 
 	private guard: t.check<unknown>;
-	private callback?: (...args: A) => void;
+	private callback?: (player: Player, ...args: A) => void;
 
 	constructor(guard: t.check<unknown>) {
 		this.guard = guard;
@@ -64,7 +64,7 @@ export class SharedRemoteAction<A extends unknown[], R> implements ISharedNetwor
 	 *
 	 * @server
 	 */
-	public OnRequest(callback: (...args: A) => R) {
+	public OnRequest(callback: (player: Player, ...args: A) => R) {
 		this.callback = callback;
 	}
 

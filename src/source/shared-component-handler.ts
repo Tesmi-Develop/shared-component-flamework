@@ -299,7 +299,7 @@ export class SharedComponentHandler implements OnInit {
 			if (!SharedRemoteAction.Indefinitely(remote)) return;
 			if (!remote.GetGuard()(args)) return ACTION_GUARD_FAILED;
 
-			return remote.GetCallback()?.(...(args as []));
+			return remote.GetCallback()?.(player, ...(args as []));
 		});
 	}
 }
