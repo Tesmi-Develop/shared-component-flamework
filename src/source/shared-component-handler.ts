@@ -122,6 +122,8 @@ export class SharedComponentHandler implements OnInit {
 		const sharedInfo = component.GenerateInfo();
 
 		players.forEach((player) => remotes._shared_component_component_interaction.fire(player, sharedInfo, "Add"));
+
+		return component;
 	}
 
 	/**
@@ -131,6 +133,7 @@ export class SharedComponentHandler implements OnInit {
 	public RemoveSharedComponent<T extends SharedComponent>(
 		player: Player | Player[] | "All",
 		instance: Instance,
+		removeFromServer: boolean = true,
 		componentSpecifier?: ConstructorRef<T>,
 	) {
 		assert(IsServer, "AddSharedComponent can't be called on server");
@@ -141,7 +144,7 @@ export class SharedComponentHandler implements OnInit {
 		if (!component) return;
 
 		const sharedInfo = component.GenerateInfo();
-		this.components.removeComponent(instance, componentSpecifier);
+		removeFromServer && this.components.removeComponent(instance, componentSpecifier);
 
 		players.forEach((player) => remotes._shared_component_component_interaction.fire(player, sharedInfo, "Remove"));
 	}
