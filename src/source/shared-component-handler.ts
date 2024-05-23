@@ -266,9 +266,7 @@ export class SharedComponentHandler implements OnInit {
 		remotes._shared_component_component_interaction.connect((info, action) => {
 			const componetID = info.PointerID
 				? this.getComponentFromPointer(info.PointerID)
-				: info.SharedIdentifier === info.Identifier
-					? info.SharedIdentifier
-					: this.getSharedComponentChild(info.SharedIdentifier);
+				: this.getSharedComponentChild(info.Identifier);
 			if (!componetID) return;
 
 			action === "Add"
