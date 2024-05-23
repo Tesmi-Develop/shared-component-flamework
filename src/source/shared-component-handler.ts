@@ -2,7 +2,14 @@ import { Controller, Modding, OnInit, Reflect, Service } from "@flamework/core";
 import { BroadcastAction } from "@rbxts/reflex";
 import { remotes } from "../remotes";
 import { SharedComponent } from "./shared-component";
-import { GetParentConstructor, IsClient, IsServer, logWarning } from "../utilities";
+import {
+	GetConstructorIdentifier,
+	GetInheritanceTree,
+	GetParentConstructor,
+	IsClient,
+	IsServer,
+	logWarning,
+} from "../utilities";
 import { SharedComponentInfo } from "../types";
 import { BaseComponent, Component, Components } from "@flamework/components";
 import { Pointer } from "./pointer";
@@ -14,6 +21,7 @@ import {
 import { ACTION_GUARD_FAILED, SharedRemoteAction } from "./shared-component-network/action";
 import { Players } from "@rbxts/services";
 import { AbstractConstructor, ConstructorRef, getComponentFromSpecifier } from "@flamework/components/out/utility";
+import { Constructor } from "@flamework/core/out/utility";
 
 export interface onSetupSharedComponent {
 	onSetup(): void;
@@ -124,6 +132,26 @@ export class SharedComponentHandler implements OnInit {
 		players.forEach((player) => remotes._shared_component_component_interaction.fire(player, sharedInfo, "Add"));
 
 		return component;
+	}
+
+	/** @server */
+	public InvokeClientAddComponent(player: Player | Player[] | "All", component: SharedComponent) {
+		assert(IsServer, "InvokeClientAddComponent can't be called on server");
+
+		const players = player === "All" ? Players.GetPlayers() : typeIs(player, "Instance") ? [player] : player;
+		const sharedInfo = component.GenerateInfo();
+
+		players.forEach((player) => remotes._shared_component_component_interaction.fire(player, sharedInfo, "Add"));
+	}
+
+	/** @server */
+	public InvokeClientRemoveComponent(player: Player | Player[] | "All", component: SharedComponent) {
+		assert(IsServer, "InvokeClientAddComponent can't be called on server");
+
+		const players = player === "All" ? Players.GetPlayers() : typeIs(player, "Instance") ? [player] : player;
+		const sharedInfo = component.GenerateInfo();
+
+		players.forEach((player) => remotes._shared_component_component_interaction.fire(player, sharedInfo, "Remove"));
 	}
 
 	/**
