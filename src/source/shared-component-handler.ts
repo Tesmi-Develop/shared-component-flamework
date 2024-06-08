@@ -1,15 +1,7 @@
 import { Controller, Modding, OnInit, Reflect, Service } from "@flamework/core";
-import { BroadcastAction } from "@rbxts/reflex";
 import { remotes } from "../remotes";
 import { SharedComponent } from "./shared-component";
-import {
-	GetConstructorIdentifier,
-	GetInheritanceTree,
-	GetParentConstructor,
-	IsClient,
-	IsServer,
-	logWarning,
-} from "../utilities";
+import { GetParentConstructor, IsClient, IsServer, logWarning } from "../utilities";
 import { SharedComponentInfo } from "../types";
 import { BaseComponent, Component, Components } from "@flamework/components";
 import { Pointer } from "./pointer";
@@ -17,11 +9,11 @@ import {
 	IsSharedComponentRemoteEvent,
 	SharedRemoteEventClientToServer,
 	SharedRemoteEventServerToClient,
-} from "./shared-component-network/event";
-import { ACTION_GUARD_FAILED, SharedRemoteAction } from "./shared-component-network/action";
+} from "./network/event";
+import { ACTION_GUARD_FAILED, SharedRemoteAction } from "./network/action";
 import { Players } from "@rbxts/services";
-import { AbstractConstructor, ConstructorRef, getComponentFromSpecifier } from "@flamework/components/out/utility";
-import { Constructor } from "@flamework/core/out/utility";
+import { AbstractConstructor, ConstructorRef } from "@flamework/components/out/utility";
+import { Atom, SyncPayload } from "@rbxts/charm";
 
 export interface onSetupSharedComponent {
 	onSetup(): void;
@@ -41,7 +33,6 @@ export class SharedComponentHandler implements OnInit {
 
 	/**
 	 * @hidden
-	 * @internal
 	 */
 	public onInit() {
 		const componentConstructors = Modding.getDecorators<typeof Component>();
@@ -170,7 +161,7 @@ export class SharedComponentHandler implements OnInit {
 		players.forEach((player) => remotes._shared_component_component_interaction.fire(player, sharedInfo, "Remove"));
 	}
 
-	private invokeDispatch(component: SharedComponent, actions: BroadcastAction[]) {
+	private invokeDispatch(component: SharedComponent, actions: SyncPayload<{}>) {
 		component.__DispatchFromServer(actions);
 	}
 

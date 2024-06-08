@@ -5,8 +5,6 @@ import { SharedComponent } from "../shared-component";
 import { t } from "@rbxts/t";
 import { ISharedRemoteAction, SharedRemoteAction } from "./action";
 
-const ACTION_GUARD_FAILED = "__ACTION_GUARD_FAILED";
-
 export interface ServerToClient {
 	readonly __brand: unique symbol;
 }
@@ -29,7 +27,10 @@ export interface ISharedNetwork {
 	/** @hidden */
 	Destroy(): void;
 
-	/**@hidden @internal */
+	/**
+	 * @hidden
+	 * @internal
+	 */
 	GetGuard(): t.check<unknown>;
 }
 

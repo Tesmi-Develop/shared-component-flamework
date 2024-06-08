@@ -1,11 +1,11 @@
-import { BroadcastAction } from "@rbxts/reflex";
 import { Client, Server, createRemotes, remote } from "@rbxts/remo";
 import { t } from "@rbxts/t";
 import { SharedComponentInfo } from "./types";
 import { Flamework } from "@flamework/core";
+import { Atom, SyncPayload } from "@rbxts/charm";
 
 export const remotes = createRemotes({
-	_shared_component_dispatch: remote<Client, [Actions: BroadcastAction[], componentInfo: SharedComponentInfo]>(
+	_shared_component_dispatch: remote<Client, [payload: SyncPayload<{}>, componentInfo: SharedComponentInfo]>(
 		Flamework.createGuard(),
 		Flamework.createGuard(),
 	),

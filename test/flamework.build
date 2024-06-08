@@ -24,7 +24,10 @@
 		"@rbxts/shared-components-flamework:out/src/source/shared-component-network/init@SharedAction": "$s:src/source/shared-component-network/init@SharedAction",
 		"@rbxts/shared-components-flamework:out/src/source/shared-component-network/action@SharedRemoteFunctionServerToClient": "$s:src/source/shared-component-network/action@SharedRemoteFunctionServerToClient",
 		"@rbxts/shared-components-flamework:out/src/source/shared-component-network/action@SharedRemoteFunction": "$s:src/source/shared-component-network/action@SharedRemoteFunction",
-		"@rbxts/shared-components-flamework:out/src/source/shared-component-network/action@SharedRemoteAction": "$s:src/source/shared-component-network/action@SharedRemoteAction"
+		"@rbxts/shared-components-flamework:out/src/source/shared-component-network/action@SharedRemoteAction": "$s:src/source/shared-component-network/action@SharedRemoteAction",
+		"@rbxts/shared-components-flamework:out/src/source/network/action@SharedRemoteAction": "$s:src/source/network/action@SharedRemoteAction",
+		"@rbxts/shared-components-flamework:out/src/source/network/event@SharedRemoteEventServerToClient": "$s:src/source/network/event@SharedRemoteEventServerToClient",
+		"@rbxts/shared-components-flamework:out/src/source/network/event@SharedRemoteEventClientToServer": "$s:src/source/network/event@SharedRemoteEventClientToServer"
 	},
 	"metadata": {},
 	"identifierPrefix": "$s",

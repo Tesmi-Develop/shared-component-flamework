@@ -4,7 +4,7 @@ import { SharedComponent } from "../shared-component";
 import { IsClient } from "../../utilities";
 import { remotes } from "../../remotes";
 
-/** @hidden */
+/** @internal */
 export const ACTION_GUARD_FAILED = "__ACTION_GUARD_FAILED";
 
 export interface ISharedRemoteAction<A extends unknown[], R> extends SharedRemoteAction<A, R> {
@@ -48,7 +48,7 @@ export class SharedRemoteAction<A extends unknown[], R> implements ISharedNetwor
 
 	public Destroy() {}
 
-	/** @hidden */
+	/** @internal */
 	public GetCallback() {
 		return this.callback;
 	}

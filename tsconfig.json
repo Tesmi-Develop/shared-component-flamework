@@ -23,6 +23,7 @@
 		"incremental": true,
 		"tsBuildInfoFile": "out/tsconfig.tsbuildinfo",
 		"declaration": true,
+		"stripInternal": true,
 		"plugins": [
 			{ 
 				"transform": "rbxts-transformer-flamework",
@@ -31,5 +32,6 @@
 			}
 		]
 	},
+	
 	"exclude": ["test/**/*", "out/**/*"]
 }

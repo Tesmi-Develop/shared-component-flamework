@@ -1,6 +1,7 @@
 import { Component } from "@flamework/components";
 import { ValueStorageComponent } from "shared/components/valueStorageComponent";
 import { OnStart } from "@flamework/core";
+import { Subscribe } from "@rbxts/reflex-class";
 
 @Component({
 	tag: "ValueStorageComponent",
@@ -18,5 +19,10 @@ export class ClientValueStorageComponent extends ValueStorageComponent implement
 	public destroy(): void {
 		super.destroy();
 		print("ClientValueStorageComponent destroyed");
+	}
+
+	@Subscribe((state) => state.value)
+	private onIncrement(value: number) {
+		print("incremented", value);
 	}
 }

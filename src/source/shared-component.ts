@@ -2,18 +2,13 @@ import { BaseComponent, Component } from "@flamework/components";
 import { onSetupSharedComponent } from "./shared-component-handler";
 import { ReplicatedStorage, RunService } from "@rbxts/services";
 import { GetConstructorIdentifier, GetInheritanceTree } from "../utilities";
-import {
-	ClassProducer,
-	CreatePatchBroadcaster,
-	IClassProducer,
-	createPatchBroadcastReceiver,
-} from "@rbxts/reflex-class";
-import { BroadcastAction, Producer, ProducerMiddleware } from "@rbxts/reflex";
+import { ClassProducer, IClassProducer } from "@rbxts/reflex-class";
 import { remotes } from "../remotes";
 import { Constructor } from "@flamework/core/out/utility";
 import { SharedComponentInfo } from "../types";
 import { Pointer } from "./pointer";
-import { ISharedNetwork } from "./shared-component-network";
+import { ISharedNetwork } from "./network";
+import { Atom, ClientSyncer, ServerSyncer, sync, SyncPatch, SyncPayload } from "@rbxts/charm";
 
 const IsServer = RunService.IsServer();
 const IsClient = RunService.IsClient();
@@ -35,20 +30,21 @@ export
 @Component()
 abstract class SharedComponent<S extends object = {}, A extends object = {}, I extends Instance = Instance>
 	extends BaseComponent<A, I>
-	implements IClassProducer, onSetupSharedComponent
+	implements IClassProducer<S>, onSetupSharedComponent
 {
 	protected pointer: Pointer | undefined;
 	protected abstract state: S;
 	private _classProducerLink: IClassProducer;
-	protected producer!: Producer<S>;
-	protected broadcaster!: ReturnType<typeof CreatePatchBroadcaster<S>>;
-	protected receiver!: ReturnType<typeof createPatchBroadcastReceiver>;
+	protected broadcaster!: ServerSyncer<{}>;
+	protected receiver!: ClientSyncer<{}>;
 	private tree: Constructor[];
 	/** @client */
 	protected isBlockingServerDispatches = false;
 	private isEnableDevTool = false;
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	protected readonly remotes!: Record<string, ISharedNetwork>;
+	protected atom!: Atom<Record<string, unknown>>;
+	private broadcastConnection?: () => void;
 
 	constructor() {
 		super();
@@ -107,90 +103,52 @@ abstract class SharedComponent<S extends object = {}, A extends object = {}, I e
 	 * @internal
 	 * @hidden
 	 **/
-	public __DispatchFromServer(actions: BroadcastAction[]) {
+	public __DispatchFromServer(payload: SyncPayload<{}>) {
 		if (this.isBlockingServerDispatches) return;
+		this.receiver.sync(payload);
 
-		return this.receiver.dispatch(actions);
+		if (!RunService.IsStudio() || !this.isEnableDevTool) return;
+		event.FireServer({
+			name: `${getmetatable(this)}_serverDispatch`,
+			args: [],
+			state: this.atom(),
+		});
 	}
 
-	/**
-	 * @internal
-	 * @hidden
-	 **/
+	/** @hidden **/
 	public onSetup() {
 		this.pointer?.AddComponent(this);
 		IsServer && this._onStartServer();
 		IsClient && this._onStartClient();
 	}
 
-	public ResolveDispatchForPlayer(player: Player, action: BroadcastAction): boolean {
-		return true;
-	}
-
-	public ResolveHydrateForPlayer(player: Player, state: S): S | undefined {
-		return;
+	public ResolveSyncForPlayer(player: Player, data: S | SyncPatch<S>): S | SyncPatch<S> {
+		return data;
 	}
 
 	private _onStartServer() {
-		this.broadcaster = CreatePatchBroadcaster({
-			producer: this.producer,
-			dispatch: (player, actions) => {
-				remotes._shared_component_dispatch.fire(player, actions, this.GenerateInfo());
-			},
+		this.broadcaster = sync.server({
+			atoms: { atom: this.atom },
+		});
 
-			beforeDispatch: (player: Player, action) => {
-				return this.ResolveDispatchForPlayer(player, action) ? action : undefined;
-			},
+		this.broadcastConnection = this.broadcaster.connect((player, payload) => {
+			const data = this.ResolveSyncForPlayer(player, payload.data as never);
+			payload.data = data;
 
-			beforeHydrate: (player, state) => {
-				return this.ResolveHydrateForPlayer(player, state);
-			},
+			remotes._shared_component_dispatch.fire(player, payload, this.GenerateInfo());
 		});
 
 		remotes._shared_component_start.connect(
-			(player, instance) => instance === this.instance && this.broadcaster.start(player),
+			(player, instance) => instance === this.instance && this.broadcaster.hydrate(player),
 		);
-
-		this.producer.applyMiddleware(this.broadcaster.middleware);
 	}
 
 	private _onStartClient() {
-		const componentName = `${getmetatable(this)}`;
-		this.receiver = createPatchBroadcastReceiver({
-			start: () => {
-				remotes._shared_component_start.fire(this.instance);
-			},
-
-			OnHydration: (state) => {
-				this.state = state as S;
-			},
-
-			OnPatch: (action) => {
-				this.state = this.producer.getState();
-				if (!this.isEnableDevTool) return;
-
-				event.FireServer({
-					name: `${componentName}_serverDispatch`,
-					args: [action],
-					state: this.producer.getState(),
-				});
-			},
+		this.receiver = sync.client({
+			atoms: { atom: this.atom },
 		});
 
-		const devToolMiddleware: ProducerMiddleware = () => {
-			return (nextAction, actionName) => {
-				return (...args) => {
-					const state = nextAction(...args);
-					if (RunService.IsStudio() && event && this.isEnableDevTool) {
-						event.FireServer({ name: `${componentName}_dispatch`, args: [...args], state });
-					}
-
-					return state;
-				};
-			};
-		};
-
-		this.producer.applyMiddleware(this.receiver.middleware, devToolMiddleware);
+		remotes._shared_component_start.fire(this.instance);
 	}
 
 	// Implement types
@@ -217,17 +175,14 @@ abstract class SharedComponent<S extends object = {}, A extends object = {}, I e
 		throw "Method not implemented.";
 	}
 
-	/**
-	 * @internal
-	 * @hidden
-	 **/
+	/** @hidden **/
 	Destroy(): void {
 		throw "Method not implemented.";
 	}
 
 	public destroy() {
 		super.destroy();
-		this.broadcaster?.destroy();
+		this.broadcastConnection?.();
 		this._classProducerLink.Destroy();
 
 		for (const [name, remote] of pairs(this.remotes)) {

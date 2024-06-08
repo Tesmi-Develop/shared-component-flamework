@@ -1,6 +1,6 @@
 import { Component } from "@flamework/components";
 import { SharedComponent } from "../../source/shared-component";
-import { ClientToServer, ServerToClient, SharedComponentNetwork } from "../../source/shared-component-network";
+import { SharedComponentNetwork, ServerToClient, ClientToServer } from "../../source/network";
 
 interface State {
 	value: number;

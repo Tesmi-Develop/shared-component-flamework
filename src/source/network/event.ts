@@ -51,6 +51,10 @@ export class SharedRemoteEventServerToClient<A extends unknown[]> implements ISh
 		return this.signal;
 	}
 
+	/**
+	 * @hidden
+	 * @internal
+	 */
 	public GetGuard() {
 		return this.guard;
 	}
@@ -126,12 +130,18 @@ export class SharedRemoteEventClientToServer<A extends unknown[]> implements ISh
 		IsServer && (this.signal = new Signal<[player: Player, ...A]>());
 	}
 
-	/**@hidden @internal */
+	/**
+	 * @hidden
+	 * @internal
+	 */
 	public GetSignal() {
 		return this.signal;
 	}
 
-	/**@hidden @internal */
+	/**
+	 * @hidden
+	 * @internal
+	 */
 	public GetGuard() {
 		return this.guard;
 	}
