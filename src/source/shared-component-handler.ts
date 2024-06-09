@@ -1,7 +1,7 @@
 import { Controller, Modding, OnInit, Reflect, Service } from "@flamework/core";
 import { remotes } from "../remotes";
 import { SharedComponent } from "./shared-component";
-import { GetParentConstructor, IsClient, IsServer, logWarning } from "../utilities";
+import { ForeachDeepTable, GetParentConstructor, IsClient, IsServer, logWarning } from "../utilities";
 import { SharedComponentInfo } from "../types";
 import { BaseComponent, Component, Components } from "@flamework/components";
 import { Pointer } from "./pointer";
@@ -11,9 +11,9 @@ import {
 	SharedRemoteEventServerToClient,
 } from "./network/event";
 import { ACTION_GUARD_FAILED, SharedRemoteAction } from "./network/action";
-import { Players } from "@rbxts/services";
+import { Players, ReplicatedStorage } from "@rbxts/services";
 import { AbstractConstructor, ConstructorRef } from "@flamework/components/out/utility";
-import { Atom, SyncPayload } from "@rbxts/charm";
+import { SyncPayload } from "@rbxts/charm";
 
 export interface onSetupSharedComponent {
 	onSetup(): void;
@@ -31,13 +31,11 @@ export class SharedComponentHandler implements OnInit {
 
 	constructor(private components: Components) {}
 
-	/**
-	 * @hidden
-	 */
+	/** @hidden */
 	public onInit() {
-		const componentConstructors = Modding.getDecorators<typeof Component>();
+		const componentConfigs = Modding.getDecorators<typeof Component>();
 
-		componentConstructors.forEach(({ constructor }) => {
+		componentConfigs.forEach(({ constructor }) => {
 			if (!constructor) return;
 			this.polymorphicIds.set(constructor, this.getPolymorphicIds(constructor));
 		});
@@ -52,8 +50,7 @@ export class SharedComponentHandler implements OnInit {
 
 		this.polymorphicIds.forEach((ids, component) => {
 			const index = ids.indexOf(componentSpecifier);
-			if (index === -1) return;
-			if (index === 0) return;
+			if (index === 0 || index === -1) return;
 
 			found = ids[0];
 		});

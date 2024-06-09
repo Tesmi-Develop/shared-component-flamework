@@ -13,7 +13,7 @@ export class ClientValueStorageComponent extends ValueStorageComponent implement
 			print(`incrementing by ${amount}`);
 		});
 		this.remotes.IncrementByClient.Fire(1);
-		this.remotes.Increment(1);
+		this.remotes.Increment(1).then(() => print("incremented"));
 	}
 
 	public destroy(): void {

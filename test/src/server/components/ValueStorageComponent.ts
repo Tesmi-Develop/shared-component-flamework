@@ -22,7 +22,7 @@ export class ServerValueStorageComponent extends ValueStorageComponent implement
 		this.Increment();
 	}
 
-	public destroy(): void {
+	public destroy() {
 		super.destroy();
 		print("ServerValueStorageComponent destroyed");
 	}

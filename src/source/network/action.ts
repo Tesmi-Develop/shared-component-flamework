@@ -16,7 +16,7 @@ export interface ISharedRemoteAction<A extends unknown[], R> extends SharedRemot
 	 *
 	 * @client
 	 */
-	(...args: A): R;
+	(...args: A): Promise<R>;
 }
 
 export class SharedRemoteAction<A extends unknown[], R> implements ISharedNetwork {

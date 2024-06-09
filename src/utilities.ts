@@ -52,6 +52,24 @@ export function GetParentConstructor(ctor: AbstractConstructor) {
 	}
 }
 
+export const ForeachDeepTable = (
+	tbl: object,
+	callback: (value: unknown, key: unknown) => void,
+	predicate?: (value: object) => boolean,
+) => {
+	for (const [key, value] of pairs(tbl)) {
+		if (typeIs(value, "table")) {
+			if (predicate && predicate(value)) {
+				callback(key, value);
+				continue;
+			}
+			ForeachDeepTable(value, callback);
+			continue;
+		}
+		callback(key, value);
+	}
+};
+
 export function GetInheritanceTree<T>(constructor: Constructor, parent: Constructor) {
 	let currentClass = constructor as ConstructorWithIndex;
 	let metatable = getmetatable(currentClass) as ConstructorWithIndex;
