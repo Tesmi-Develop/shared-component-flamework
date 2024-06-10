@@ -42,7 +42,7 @@ abstract class SharedComponent<S extends object = {}, A extends object = {}, I e
 	protected isBlockingServerDispatches = false;
 	private isEnableDevTool = false;
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	protected readonly remotes!: Record<string, ISharedNetwork>;
+	protected readonly remotes: Record<string, ISharedNetwork> = {};
 	protected atom!: Atom<Record<string, unknown>>;
 	private broadcastConnection?: () => void;
 
