@@ -16,8 +16,8 @@ export class ValueStorageComponent extends SharedComponent<State> {
 		b: 2,
 	};
 	protected remotes = {
-		IncrementByServer: SharedComponentNetwork.event<ServerToClient, [amount: number]>(),
-		IncrementByClient: SharedComponentNetwork.event<ClientToServer, [amount: number]>(),
+		IncrementFromServer: SharedComponentNetwork.event<ServerToClient, [amount: number]>(),
+		IncrementFromClient: SharedComponentNetwork.event<ClientToServer, [amount: number]>(),
 		Increment: SharedComponentNetwork.action<[amount: number], void>(),
 	};
 }

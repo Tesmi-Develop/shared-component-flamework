@@ -9,10 +9,10 @@ import { Subscribe } from "@rbxts/reflex-class";
 export class ClientValueStorageComponent extends ValueStorageComponent implements OnStart {
 	onStart() {
 		print("Hello from client");
-		this.remotes.IncrementByServer.Connect((amount: number) => {
+		this.remotes.IncrementFromServer.Connect((amount: number) => {
 			print(`incrementing by ${amount}`);
 		});
-		this.remotes.IncrementByClient.Fire(1);
+		this.remotes.IncrementFromClient.Fire(1);
 		this.remotes.Increment(1).then(() => print("incremented"));
 	}
 
