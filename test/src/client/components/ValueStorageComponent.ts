@@ -1,28 +1,13 @@
 import { Component } from "@flamework/components";
-import { ValueStorageComponent } from "shared/components/valueStorageComponent";
-import { OnStart } from "@flamework/core";
 import { Subscribe } from "@rbxts/reflex-class";
+import { ValueStorageComponent } from "shared/components/valueStorageComponent";
 
 @Component({
 	tag: "ValueStorageComponent",
 })
-export class ClientValueStorageComponent extends ValueStorageComponent implements OnStart {
-	onStart() {
-		print("Hello from client");
-		this.remotes.IncrementFromServer.Connect((amount: number) => {
-			print(`incrementing by ${amount}`);
-		});
-		this.remotes.IncrementFromClient.Fire(1);
-		this.remotes.Increment(1).then(() => print("incremented"));
-	}
-
-	public destroy(): void {
-		super.destroy();
-		print("ClientValueStorageComponent destroyed");
-	}
-
+export class ClientValueStorageComponent extends ValueStorageComponent {
 	@Subscribe((state) => state.value)
-	private onIncrement(value: number) {
-		print("incremented", value);
+	private onIncrement(newValue: number) {
+		print(`new value: ${newValue}`);
 	}
 }

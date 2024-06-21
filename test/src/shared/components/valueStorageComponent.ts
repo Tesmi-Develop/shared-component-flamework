@@ -1,23 +1,13 @@
 import { Component } from "@flamework/components";
-import { SharedComponent } from "../../source/shared-component";
-import { SharedComponentNetwork, ServerToClient, ClientToServer } from "../../source/network";
+import { SharedComponent } from "@rbxts/shared-components-flamework";
 
 interface State {
 	value: number;
-	a: number;
-	b: number;
 }
 
 @Component()
 export class ValueStorageComponent extends SharedComponent<State> {
 	protected state = {
 		value: 0,
-		a: 1,
-		b: 2,
-	};
-	protected remotes = {
-		IncrementFromServer: SharedComponentNetwork.event<ServerToClient, [amount: number]>(),
-		IncrementFromClient: SharedComponentNetwork.event<ClientToServer, [amount: number]>(),
-		Increment: SharedComponentNetwork.action<[amount: number], void>(),
 	};
 }

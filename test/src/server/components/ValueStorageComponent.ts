@@ -7,28 +7,16 @@ import { ValueStorageComponent } from "shared/components/valueStorageComponent";
 	tag: "ValueStorageComponent",
 })
 export class ServerValueStorageComponent extends ValueStorageComponent implements OnStart {
-	onStart() {
-		print("Hello from server");
-		this.remotes.IncrementFromClient.Connect((player, amount) => {
-			print(`incrementing by ${amount}, player: ${player}`);
+	public onStart() {
+		task.spawn(() => {
+			while (task.wait(3)) {
+				this.increment();
+			}
 		});
-
-		this.remotes.Increment.OnRequest((amount) => {
-			print(`Action: incrementing by ${amount}`);
-		});
-
-		task.wait(math.random(5, 10));
-		this.remotes.IncrementFromServer.Broadcast(1);
-		this.Increment();
-	}
-
-	public destroy() {
-		super.destroy();
-		print("ServerValueStorageComponent destroyed");
 	}
 
 	@Action()
-	public Increment() {
+	private increment() {
 		return {
 			...this.state,
 			value: this.state.value + 1,

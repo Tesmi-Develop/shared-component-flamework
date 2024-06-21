@@ -1,6 +1,6 @@
 import { BaseComponent, Component } from "@flamework/components";
-import { onSetupSharedComponent } from "./shared-component-handler";
-import { ReplicatedStorage, RunService } from "@rbxts/services";
+import { onSetupSharedComponent, SharedComponentHandler } from "./shared-component-handler";
+import { Players, ReplicatedStorage, RunService } from "@rbxts/services";
 import { GetConstructorIdentifier, GetInheritanceTree } from "../utilities";
 import { ClassProducer, IClassProducer } from "@rbxts/reflex-class";
 import { remotes } from "../remotes";
@@ -8,7 +8,8 @@ import { Constructor } from "@flamework/core/out/utility";
 import { SharedComponentInfo } from "../types";
 import { Pointer } from "./pointer";
 import { ISharedNetwork } from "./network";
-import { Atom, ClientSyncer, ServerSyncer, sync, SyncPatch, SyncPayload } from "@rbxts/charm";
+import { Atom, ClientSyncer, sync, SyncPatch, SyncPayload } from "@rbxts/charm";
+import { Dependency } from "@flamework/core";
 
 const IsServer = RunService.IsServer();
 const IsClient = RunService.IsClient();
@@ -35,7 +36,6 @@ abstract class SharedComponent<S extends object = {}, A extends object = {}, I e
 	protected pointer: Pointer | undefined;
 	protected abstract state: S;
 	private _classProducerLink: IClassProducer;
-	protected broadcaster!: ServerSyncer<{}>;
 	protected receiver!: ClientSyncer<{}>;
 	private tree: Constructor[];
 	/** @client */
@@ -45,6 +45,7 @@ abstract class SharedComponent<S extends object = {}, A extends object = {}, I e
 	protected readonly remotes: Record<string, ISharedNetwork> = {};
 	protected atom!: Atom<Record<string, unknown>>;
 	private broadcastConnection?: () => void;
+	private info?: SharedComponentInfo;
 
 	constructor() {
 		super();
@@ -79,12 +80,15 @@ abstract class SharedComponent<S extends object = {}, A extends object = {}, I e
 	}
 
 	public GenerateInfo(): SharedComponentInfo {
-		return {
+		const info = this.info ?? {
 			Instance: this.instance,
 			Identifier: GetConstructorIdentifier(this.getConstructor()),
 			SharedIdentifier: GetConstructorIdentifier(this.tree[this.tree.size() - 1]),
 			PointerID: this.pointer ? Pointer.GetPointerID(this.pointer) : undefined,
 		};
+
+		this.info = info;
+		return info;
 	}
 
 	/** @client */
@@ -127,20 +131,34 @@ abstract class SharedComponent<S extends object = {}, A extends object = {}, I e
 	}
 
 	private _onStartServer() {
-		this.broadcaster = sync.server({
-			atoms: { atom: this.atom },
+		const sharedComponentHandler = Dependency<SharedComponentHandler>();
+		const observer = sharedComponentHandler.GetAtomObserver();
+
+		const repairPayload = (payload: SyncPayload<{}>) => {
+			const state = payload.data;
+			payload.data = {
+				atom: state,
+			};
+		};
+
+		this.broadcastConnection = observer.Connect(this.atom, (payload) => {
+			Players.GetPlayers().forEach((player) => {
+				const data = this.ResolveSyncForPlayer(player, payload.data as never);
+				payload.data = data;
+				repairPayload(payload);
+
+				remotes._shared_component_dispatch.fire(player, payload, this.GenerateInfo());
+			});
 		});
 
-		this.broadcastConnection = this.broadcaster.connect((player, payload) => {
-			const data = this.ResolveSyncForPlayer(player, payload.data as never);
-			payload.data = data;
+		const hydrate = (player: Player) => {
+			const payload = observer.GenerateHydratePayload(this.atom);
+			repairPayload(payload);
 
 			remotes._shared_component_dispatch.fire(player, payload, this.GenerateInfo());
-		});
+		};
 
-		remotes._shared_component_start.connect(
-			(player, instance) => instance === this.instance && this.broadcaster.hydrate(player),
-		);
+		remotes._shared_component_start.connect((player, instance) => instance === this.instance && hydrate(player));
 	}
 
 	private _onStartClient() {
