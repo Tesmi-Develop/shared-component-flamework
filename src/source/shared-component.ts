@@ -1,14 +1,14 @@
 import { BaseComponent, Component } from "@flamework/components";
 import { onSetupSharedComponent, SharedComponentHandler } from "./shared-component-handler";
 import { Players, ReplicatedStorage, RunService } from "@rbxts/services";
-import { GetConstructorIdentifier, GetInheritanceTree } from "../utilities";
+import { DeepCloneTable, DeepReadonly, GetConstructorIdentifier, GetInheritanceTree } from "../utilities";
 import { ClassProducer, IClassProducer } from "@rbxts/reflex-class";
 import { remotes } from "../remotes";
 import { Constructor } from "@flamework/core/out/utility";
 import { SharedComponentInfo } from "../types";
 import { Pointer } from "./pointer";
 import { ISharedNetwork } from "./network";
-import { Atom, ClientSyncer, sync, SyncPatch, SyncPayload } from "@rbxts/charm";
+import { Atom, ClientSyncer, subscribe, sync, SyncPatch, SyncPayload } from "@rbxts/charm";
 import { Dependency } from "@flamework/core";
 
 const IsServer = RunService.IsServer();
@@ -79,6 +79,11 @@ abstract class SharedComponent<S extends object = {}, A extends object = {}, I e
 		return getmetatable(this) as Constructor<SharedComponent>;
 	}
 
+	/**
+	 * Generates and returns the information about the shared component.
+	 *
+	 * @return {SharedComponentInfo} The information about the shared component.
+	 */
 	public GenerateInfo(): SharedComponentInfo {
 		const info = this.info ?? {
 			Instance: this.instance,
@@ -126,7 +131,26 @@ abstract class SharedComponent<S extends object = {}, A extends object = {}, I e
 		IsClient && this._onStartClient();
 	}
 
-	public ResolveSyncForPlayer(player: Player, data: S | SyncPatch<S>): S | SyncPatch<S> {
+	/**
+	 * Determines whether the given sync patch is allowed to be synced for the specified player.
+	 * WARNING: Argument data is read-only!!!.
+	 *
+	 * @param {Player} player - The player for whom the sync patch is being resolved.
+	 * @param {SyncPatch<S>} data - The sync patch to be resolved.
+	 * @return {boolean} Returns `true` if the sync patch is allowed to be synced for the player, `false` otherwise.
+	 */
+	public ResolveIsSyncForPlayer(player: Player, data: SyncPatch<S>): boolean {
+		return true;
+	}
+
+	/**
+	 * Resolves the sync data for a specific player.
+	 *
+	 * @param {Player} player - The player for whom the sync data is being resolved.
+	 * @param {SyncPatch<S>} data - The sync data to be resolved.
+	 * @return {SyncPatch<S>} - The resolved sync data.
+	 */
+	public ResolveSyncForPlayer(player: Player, data: SyncPatch<S>): SyncPatch<S> {
 		return data;
 	}
 
@@ -139,19 +163,26 @@ abstract class SharedComponent<S extends object = {}, A extends object = {}, I e
 			payload.data = {
 				atom: state,
 			};
+
+			return payload as SyncPayload<{ atom: S }>;
 		};
 
-		this.broadcastConnection = observer.Connect(this.atom, (payload) => {
-			Players.GetPlayers().forEach((player) => {
-				const data = this.ResolveSyncForPlayer(player, payload.data as never);
-				payload.data = data;
-				repairPayload(payload);
+		this.broadcastConnection = observer.Connect(this.atom, (_payload) => {
+			const originalPayload = repairPayload(_payload);
 
-				remotes._shared_component_dispatch.fire(player, payload, this.GenerateInfo());
+			Players.GetPlayers().forEach((player) => {
+				if (!this.ResolveIsSyncForPlayer(player, originalPayload.data.atom as never)) return;
+
+				const copyPayload = DeepCloneTable(originalPayload) as { type: "init"; data: { atom: S } };
+				const data = this.ResolveSyncForPlayer(player, copyPayload.data.atom as never);
+				copyPayload.data.atom = data as never;
+
+				remotes._shared_component_dispatch.fire(player, copyPayload, this.GenerateInfo());
 			});
 		});
 
 		const hydrate = (player: Player) => {
+			if (!this.ResolveIsSyncForPlayer(player, this.atom() as never)) return;
 			const payload = observer.GenerateHydratePayload(this.atom);
 			repairPayload(payload);
 

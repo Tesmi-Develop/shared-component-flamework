@@ -10,16 +10,16 @@ export class ServerValueStorageComponent extends ValueStorageComponent implement
 	public onStart() {
 		task.spawn(() => {
 			while (task.wait(3)) {
-				this.increment();
+				this.setValue(this.state.value + 1);
 			}
 		});
 	}
 
 	@Action()
-	private increment() {
+	private setValue(value: number) {
 		return {
 			...this.state,
-			value: this.state.value + 1,
+			value,
 		};
 	}
 }
