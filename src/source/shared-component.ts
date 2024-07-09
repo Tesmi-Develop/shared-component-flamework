@@ -158,17 +158,17 @@ abstract class SharedComponent<S extends object = {}, A extends object = {}, I e
 		const sharedComponentHandler = Dependency<SharedComponentHandler>();
 		const observer = sharedComponentHandler.GetAtomObserver();
 
-		const repairPayload = (payload: SyncPayload<{}>) => {
-			const state = payload.data;
-			payload.data = {
-				atom: state,
+		const generatePayload = (payload: SyncPatch<{}>) => {
+			return {
+				type: "patch",
+				data: {
+					atom: payload,
+				},
 			};
-
-			return payload as SyncPayload<{ atom: S }>;
 		};
 
-		this.broadcastConnection = observer.Connect(this.atom, (_payload) => {
-			const originalPayload = repairPayload(_payload);
+		this.broadcastConnection = observer.Connect(this.atom, (patch) => {
+			const originalPayload = generatePayload(patch);
 
 			Players.GetPlayers().forEach((player) => {
 				if (!this.ResolveIsSyncForPlayer(player, originalPayload.data.atom as never)) return;
@@ -183,10 +183,12 @@ abstract class SharedComponent<S extends object = {}, A extends object = {}, I e
 
 		const hydrate = (player: Player) => {
 			if (!this.ResolveIsSyncForPlayer(player, this.atom() as never)) return;
-			const payload = observer.GenerateHydratePayload(this.atom);
-			repairPayload(payload);
 
-			remotes._shared_component_dispatch.fire(player, payload, this.GenerateInfo());
+			remotes._shared_component_dispatch.fire(
+				player,
+				{ type: "init", data: { atom: this.atom() } },
+				this.GenerateInfo(),
+			);
 		};
 
 		remotes._shared_component_start.connect((player, instance) => instance === this.instance && hydrate(player));
