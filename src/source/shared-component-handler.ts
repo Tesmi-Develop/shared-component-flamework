@@ -1,7 +1,7 @@
 import { Controller, Modding, OnInit, Reflect, Service } from "@flamework/core";
 import { remotes } from "../remotes";
 import { SharedComponent } from "./shared-component";
-import { ForeachDeepTable, GetParentConstructor, IsClient, IsServer, logWarning } from "../utilities";
+import { GetParentConstructor, IsClient, IsServer, logWarning } from "../utilities";
 import { SharedComponentInfo } from "../types";
 import { BaseComponent, Component, Components } from "@flamework/components";
 import { Pointer } from "./pointer";

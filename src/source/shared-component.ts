@@ -1,14 +1,14 @@
 import { BaseComponent, Component } from "@flamework/components";
 import { onSetupSharedComponent, SharedComponentHandler } from "./shared-component-handler";
 import { Players, ReplicatedStorage, RunService } from "@rbxts/services";
-import { DeepCloneTable, DeepReadonly, GetConstructorIdentifier, GetInheritanceTree } from "../utilities";
+import { DeepCloneTable, GetConstructorIdentifier, GetInheritanceTree } from "../utilities";
 import { ClassProducer, IClassProducer } from "@rbxts/reflex-class";
 import { remotes } from "../remotes";
 import { Constructor } from "@flamework/core/out/utility";
 import { SharedComponentInfo } from "../types";
 import { Pointer } from "./pointer";
 import { ISharedNetwork } from "./network";
-import { Atom, ClientSyncer, subscribe, sync, SyncPatch, SyncPayload } from "@rbxts/charm";
+import { Atom, ClientSyncer, sync, SyncPatch, SyncPayload } from "@rbxts/charm";
 import { Dependency } from "@flamework/core";
 
 const IsServer = RunService.IsServer();
@@ -46,6 +46,7 @@ abstract class SharedComponent<S extends object = {}, A extends object = {}, I e
 	protected atom!: Atom<Record<string, unknown>>;
 	private broadcastConnection?: () => void;
 	private info?: SharedComponentInfo;
+	private remoteConnection!: () => void;
 
 	constructor() {
 		super();
@@ -191,7 +192,9 @@ abstract class SharedComponent<S extends object = {}, A extends object = {}, I e
 			);
 		};
 
-		remotes._shared_component_start.connect((player, instance) => instance === this.instance && hydrate(player));
+		this.remoteConnection = remotes._shared_component_start.connect(
+			(player, instance) => instance === this.instance && hydrate(player),
+		);
 	}
 
 	private _onStartClient() {
@@ -234,6 +237,7 @@ abstract class SharedComponent<S extends object = {}, A extends object = {}, I e
 	public destroy() {
 		super.destroy();
 		this.broadcastConnection?.();
+		this.remoteConnection?.();
 		this._classProducerLink.Destroy();
 
 		for (const [name, remote] of pairs(this.remotes)) {
