@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { BaseComponent, Component } from "@flamework/components";
 import { onSetupSharedComponent, SharedComponentHandler } from "./shared-component-handler";
-import { Players, ReplicatedStorage, RunService } from "@rbxts/services";
+import { HttpService, Players, ReplicatedStorage, RunService } from "@rbxts/services";
 import { DeepCloneTable, GetConstructorIdentifier, GetInheritanceTree } from "../utilities";
 import { ClassProducer, IClassProducer } from "@rbxts/reflex-class";
 import { remotes } from "../remotes";
@@ -10,6 +11,7 @@ import { Pointer } from "./pointer";
 import { ISharedNetwork } from "./network";
 import { Atom, ClientSyncer, sync, SyncPatch, SyncPayload } from "@rbxts/charm";
 import { Dependency } from "@flamework/core";
+import { Signal } from "@rbxts/beacon";
 
 const IsServer = RunService.IsServer();
 const IsClient = RunService.IsClient();
@@ -27,15 +29,39 @@ const mergeSharedComponent = () => {
 	return typedClassProducer.constructor;
 };
 
+export const OnAddedSharedComponents = new Signal<[id: string, instance: Instance]>();
+export const ClientSharedComponents = new Map<string, Instance>(); // ID -> Instance
+
+export const WaitForClientSharedComponent = async (id: string) => {
+	if (ClientSharedComponents.has(id)) {
+		return ClientSharedComponents.get(id)!;
+	}
+
+	const thread = coroutine.running();
+
+	const connection = OnAddedSharedComponents.Connect((newId, instance) => {
+		if (id !== newId) return;
+		coroutine.resume(thread, instance);
+		connection.Disconnect();
+	});
+
+	return coroutine.yield() as unknown as Instance;
+};
+
+const addSharedComponent = (id: string, instance: Instance) => {
+	OnAddedSharedComponents.Fire(id, instance);
+	ClientSharedComponents.set(id, instance);
+};
+
 export
 @Component()
-abstract class SharedComponent<S extends object = {}, A extends object = {}, I extends Instance = Instance>
-	extends BaseComponent<A, I>
+abstract class SharedComponent<S = any, A extends object = {}, I extends Instance = Instance>
+	extends BaseComponent<A & { __SERVER_ID?: string }, I>
 	implements IClassProducer<S>, onSetupSharedComponent
 {
 	protected pointer: Pointer | undefined;
 	protected abstract state: S;
-	private _classProducerLink: IClassProducer;
+	private _classProducerLink: IClassProducer<S>;
 	protected receiver!: ClientSyncer<{}>;
 	private tree: Constructor[];
 	/** @client */
@@ -53,7 +79,7 @@ abstract class SharedComponent<S extends object = {}, A extends object = {}, I e
 		classProducerConstructor(this);
 		this.initSharedActions();
 
-		this._classProducerLink = this as unknown as IClassProducer;
+		this._classProducerLink = this as unknown as IClassProducer<S>;
 		this.tree = GetInheritanceTree(this.getConstructor(), SharedComponent as Constructor);
 	}
 
@@ -80,14 +106,25 @@ abstract class SharedComponent<S extends object = {}, A extends object = {}, I e
 		return getmetatable(this) as Constructor<SharedComponent>;
 	}
 
+	private initServerId() {
+		if (this.attributes.__SERVER_ID) {
+			return;
+		}
+
+		this.attributes.__SERVER_ID = HttpService.GenerateGUID(false) as never;
+		addSharedComponent(this.attributes.__SERVER_ID!, this.instance);
+	}
+
 	/**
 	 * Generates and returns the information about the shared component.
 	 *
 	 * @return {SharedComponentInfo} The information about the shared component.
 	 */
 	public GenerateInfo(): SharedComponentInfo {
+		assert(this.attributes.__SERVER_ID, "Shared component must have a server id");
+
 		const info = this.info ?? {
-			Instance: this.instance,
+			ServerId: this.attributes.__SERVER_ID,
 			Identifier: GetConstructorIdentifier(this.getConstructor()),
 			SharedIdentifier: GetConstructorIdentifier(this.tree[this.tree.size() - 1]),
 			PointerID: this.pointer ? Pointer.GetPointerID(this.pointer) : undefined,
@@ -156,6 +193,12 @@ abstract class SharedComponent<S extends object = {}, A extends object = {}, I e
 	}
 
 	private _onStartServer() {
+		this.onAttributeChanged("__SERVER_ID", (id, oldValue) => {
+			oldValue && ClientSharedComponents.delete(oldValue);
+			id && addSharedComponent(id, this.instance);
+		});
+
+		this.initServerId();
 		const sharedComponentHandler = Dependency<SharedComponentHandler>();
 		const observer = sharedComponentHandler.GetAtomObserver();
 
@@ -168,7 +211,7 @@ abstract class SharedComponent<S extends object = {}, A extends object = {}, I e
 			};
 		};
 
-		this.broadcastConnection = observer.Connect(this.atom, (patch) => {
+		this.broadcastConnection = observer.Connect(this.atom as never, (patch: {}) => {
 			const originalPayload = generatePayload(patch);
 
 			Players.GetPlayers().forEach((player) => {
@@ -200,6 +243,15 @@ abstract class SharedComponent<S extends object = {}, A extends object = {}, I e
 	private _onStartClient() {
 		this.receiver = sync.client({
 			atoms: { atom: this.atom },
+		});
+
+		if (this.attributes.__SERVER_ID) {
+			addSharedComponent(this.attributes.__SERVER_ID, this.instance);
+		}
+
+		this.onAttributeChanged("__SERVER_ID", (id, oldValue) => {
+			oldValue && ClientSharedComponents.delete(oldValue);
+			id && addSharedComponent(id, this.instance);
 		});
 
 		remotes._shared_component_start.fire(this.instance);

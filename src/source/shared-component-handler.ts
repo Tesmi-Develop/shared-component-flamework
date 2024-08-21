@@ -1,6 +1,6 @@
 import { Controller, Modding, OnInit, Reflect, Service } from "@flamework/core";
 import { remotes } from "../remotes";
-import { SharedComponent } from "./shared-component";
+import { SharedComponent, WaitForClientSharedComponent } from "./shared-component";
 import { GetParentConstructor, IsClient, IsServer, logWarning } from "../utilities";
 import { SharedComponentInfo } from "../types";
 import { BaseComponent, Component, Components } from "@flamework/components";
@@ -11,7 +11,7 @@ import {
 	SharedRemoteEventServerToClient,
 } from "./network/event";
 import { ACTION_GUARD_FAILED, SharedRemoteAction } from "./network/action";
-import { Players, ReplicatedStorage } from "@rbxts/services";
+import { Players } from "@rbxts/services";
 import { AbstractConstructor, ConstructorRef } from "@flamework/components/out/utility";
 import { SyncPayload } from "@rbxts/charm";
 import { AtomObserver } from "@rbxts/observer-charm";
@@ -183,11 +183,17 @@ export class SharedComponentHandler implements OnInit {
 		}
 	}
 
-	private resolveComponent({ Instance, Identifier, SharedIdentifier, PointerID }: SharedComponentInfo) {
+	private async resolveComponent({ ServerId, Identifier, SharedIdentifier, PointerID }: SharedComponentInfo) {
 		if (!Modding.getObjectFromId(SharedIdentifier)) {
 			logWarning(
 				`Attempt to allow dispatching, but shared component does not exist\n SharedIdentifier: ${SharedIdentifier}`,
 			);
+			return;
+		}
+
+		const [success, instance] = WaitForClientSharedComponent(ServerId).timeout(15).await();
+		if (!success) {
+			warn(`Attempt to dispatch component with missing serverID\n ServerId: ${ServerId}`);
 			return;
 		}
 
@@ -202,7 +208,7 @@ export class SharedComponentHandler implements OnInit {
 
 			try {
 				const component = this.components.getComponent<SharedComponent>(
-					Instance,
+					instance,
 					pointer.GetComponentMetadata(),
 				);
 				if (component) return component;
@@ -215,16 +221,16 @@ export class SharedComponentHandler implements OnInit {
 
 		// Try get component from indentifier
 		if (Modding.getObjectFromId(Identifier)) {
-			const component = this.components.getComponent<SharedComponent>(Instance, Identifier);
+			const component = this.components.getComponent<SharedComponent>(instance, Identifier);
 			if (component) return component;
 		}
 
 		// Try get component from shared identifier
-		const sharedComponent = this.components.getComponents<SharedComponent>(Instance, SharedIdentifier);
+		const sharedComponent = this.components.getComponents<SharedComponent>(instance, SharedIdentifier);
 
 		if (sharedComponent.size() > 1) {
 			logWarning(
-				`Attempt to allow dispatching when an instance has multiple sharedComponent\n Instance: ${Instance}\n SharedIdentifier: ${SharedIdentifier}\n ServerIdentifier: ${Identifier}`,
+				`Attempt to allow dispatching when an instance has multiple sharedComponent\n Instance: ${instance}\n SharedIdentifier: ${SharedIdentifier}\n ServerIdentifier: ${Identifier}`,
 			);
 			return;
 		}
@@ -233,13 +239,13 @@ export class SharedComponentHandler implements OnInit {
 	}
 
 	private onClientSetup() {
-		remotes._shared_component_dispatch.connect((actions, componentInfo) => {
-			const component = this.resolveComponent(componentInfo);
+		remotes._shared_component_dispatch.connect(async (actions, componentInfo) => {
+			const component = await this.resolveComponent(componentInfo);
 			component && this.invokeDispatch(component, actions);
 		});
 
-		remotes._shared_component_remote_event_Client.connect((componentInfo, eventName, args) => {
-			const component = this.resolveComponent(componentInfo);
+		remotes._shared_component_remote_event_Client.connect(async (componentInfo, eventName, args) => {
+			const component = await this.resolveComponent(componentInfo);
 			if (!component) return;
 
 			const remote = component.GetRemote(eventName);
@@ -250,7 +256,7 @@ export class SharedComponentHandler implements OnInit {
 			remote.GetSignal().Fire(...(args as []));
 		});
 
-		remotes._shared_component_component_interaction.connect((info, action) => {
+		remotes._shared_component_component_interaction.connect(async (info, action) => {
 			const componetID = info.PointerID
 				? this.getComponentFromPointer(info.PointerID)
 				: info.SharedIdentifier === info.Identifier
@@ -258,9 +264,15 @@ export class SharedComponentHandler implements OnInit {
 					: this.getSharedComponentChild(info.SharedIdentifier);
 			if (!componetID) return;
 
+			const [success, instance] = WaitForClientSharedComponent(info.ServerId).timeout(15).await();
+			if (!success) {
+				warn("Attempt to dispatch component with missing serverID\n ServerId: " + info.ServerId);
+				return;
+			}
+
 			action === "Add"
-				? this.components.addComponent(info.Instance, componetID)
-				: this.components.removeComponent(info.Instance, componetID);
+				? this.components.addComponent(instance, componetID)
+				: this.components.removeComponent(instance, componetID);
 		});
 	}
 
@@ -268,8 +280,8 @@ export class SharedComponentHandler implements OnInit {
 		this.atomObserver = new AtomObserver();
 		this.atomObserver.Start();
 
-		remotes._shared_component_remote_event_Server.connect((player, componentInfo, eventName, args) => {
-			const component = this.resolveComponent(componentInfo);
+		remotes._shared_component_remote_event_Server.connect(async (player, componentInfo, eventName, args) => {
+			const component = await this.resolveComponent(componentInfo);
 			if (!component) return;
 
 			const remote = component.GetRemote(eventName);
@@ -280,8 +292,8 @@ export class SharedComponentHandler implements OnInit {
 			remote.GetSignal().Fire(player, ...(args as []));
 		});
 
-		remotes._shared_component_remote_function_Server.onRequest((player, componentInfo, remoteName, args) => {
-			const component = this.resolveComponent(componentInfo);
+		remotes._shared_component_remote_function_Server.onRequest(async (player, componentInfo, remoteName, args) => {
+			const component = await this.resolveComponent(componentInfo);
 			if (!component) return;
 
 			const remote = component.GetRemote(remoteName);
