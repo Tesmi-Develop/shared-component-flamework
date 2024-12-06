@@ -9,9 +9,10 @@ import { Constructor } from "@flamework/core/out/utility";
 import { SharedComponentInfo } from "../types";
 import { Pointer } from "./pointer";
 import { ISharedNetwork } from "./network";
-import { Atom, ClientSyncer, sync, SyncPatch, SyncPayload } from "@rbxts/charm";
+import { Atom } from "@rbxts/charm";
 import { Dependency } from "@flamework/core";
 import { Signal } from "@rbxts/beacon";
+import { ClientSyncer, SyncPayload, SyncPatch, client } from "@rbxts/charm-sync";
 
 const IsServer = RunService.IsServer();
 const IsClient = RunService.IsClient();
@@ -241,7 +242,7 @@ abstract class SharedComponent<S = any, A extends object = {}, I extends Instanc
 	}
 
 	private _onStartClient() {
-		this.receiver = sync.client({
+		this.receiver = client({
 			atoms: { atom: this.atom },
 		});
 

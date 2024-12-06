@@ -13,8 +13,8 @@ import {
 import { ACTION_GUARD_FAILED, SharedRemoteAction } from "./network/action";
 import { Players } from "@rbxts/services";
 import { AbstractConstructor, ConstructorRef } from "@flamework/components/out/utility";
-import { SyncPayload } from "@rbxts/charm";
 import { AtomObserver } from "@rbxts/observer-charm";
+import { SyncPayload } from "@rbxts/charm-sync";
 
 export interface onSetupSharedComponent {
 	onSetup(): void;

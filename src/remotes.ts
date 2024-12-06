@@ -2,7 +2,7 @@ import { Client, Server, createRemotes, remote } from "@rbxts/remo";
 import { t } from "@rbxts/t";
 import { SharedComponentInfo } from "./types";
 import { Flamework } from "@flamework/core";
-import { SyncPayload } from "@rbxts/charm";
+import { SyncPayload } from "@rbxts/charm-sync";
 
 export const remotes = createRemotes({
 	_shared_component_dispatch: remote<Client, [payload: SyncPayload<{}>, componentInfo: SharedComponentInfo]>(
