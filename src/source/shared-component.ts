@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { BaseComponent, Component } from "@flamework/components";
-import { onSetupSharedComponent, SharedComponentHandler } from "./shared-component-handler";
-import { HttpService, Players, ReplicatedStorage, RunService } from "@rbxts/services";
+import { onSetupSharedComponent } from "./shared-component-handler";
+import { HttpService, ReplicatedStorage, RunService } from "@rbxts/services";
 import { DeepCloneTable, GetConstructorIdentifier, GetInheritanceTree } from "../utilities";
 import { ClassProducer, IClassProducer } from "@rbxts/reflex-class";
 import { remotes } from "../remotes";
@@ -10,9 +10,8 @@ import { SharedComponentInfo } from "../types";
 import { Pointer } from "./pointer";
 import { ISharedNetwork } from "./network";
 import { Atom } from "@rbxts/charm";
-import { Dependency } from "@flamework/core";
 import { Signal } from "@rbxts/beacon";
-import { ClientSyncer, SyncPayload, SyncPatch, client } from "@rbxts/charm-sync";
+import { ClientSyncer, SyncPayload, SyncPatch, client, ServerSyncer, server } from "@rbxts/charm-sync";
 
 const IsServer = RunService.IsServer();
 const IsClient = RunService.IsClient();
@@ -64,6 +63,7 @@ abstract class SharedComponent<S = any, A extends object = {}, I extends Instanc
 	protected abstract state: S;
 	private _classProducerLink: IClassProducer<S>;
 	protected receiver!: ClientSyncer<{}>;
+	protected sender!: ServerSyncer<{}>;
 	private tree: Constructor[];
 	/** @client */
 	protected isBlockingServerDispatches = false;
@@ -200,30 +200,16 @@ abstract class SharedComponent<S = any, A extends object = {}, I extends Instanc
 		});
 
 		this.initServerId();
-		const sharedComponentHandler = Dependency<SharedComponentHandler>();
-		const observer = sharedComponentHandler.GetAtomObserver();
+		this.sender = server({ atoms: { atom: this.atom } });
 
-		const generatePayload = (payload: SyncPatch<{}>) => {
-			return {
-				type: "patch",
-				data: {
-					atom: payload,
-				},
-			};
-		};
+		this.sender.connect((player, payload) => {
+			if (!this.ResolveIsSyncForPlayer(player, (payload.data as Record<string, unknown>).atom as never)) return;
 
-		this.broadcastConnection = observer.Connect(this.atom as never, (patch: {}) => {
-			const originalPayload = generatePayload(patch);
+			const copyPayload = DeepCloneTable(payload) as { type: "init"; data: { atom: S } };
+			const data = this.ResolveSyncForPlayer(player, copyPayload.data.atom as never);
+			copyPayload.data.atom = data as never;
 
-			Players.GetPlayers().forEach((player) => {
-				if (!this.ResolveIsSyncForPlayer(player, originalPayload.data.atom as never)) return;
-
-				const copyPayload = DeepCloneTable(originalPayload) as { type: "init"; data: { atom: S } };
-				const data = this.ResolveSyncForPlayer(player, copyPayload.data.atom as never);
-				copyPayload.data.atom = data as never;
-
-				remotes._shared_component_dispatch.fire(player, copyPayload, this.GenerateInfo());
-			});
+			remotes._shared_component_dispatch.fire(player, copyPayload, this.GenerateInfo());
 		});
 
 		const hydrate = (player: Player) => {

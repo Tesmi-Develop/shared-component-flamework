@@ -13,7 +13,6 @@ import {
 import { ACTION_GUARD_FAILED, SharedRemoteAction } from "./network/action";
 import { Players } from "@rbxts/services";
 import { AbstractConstructor, ConstructorRef } from "@flamework/components/out/utility";
-import { AtomObserver } from "@rbxts/observer-charm";
 import { SyncPayload } from "@rbxts/charm-sync";
 
 export interface onSetupSharedComponent {
@@ -29,7 +28,6 @@ export interface onSetupSharedComponent {
 export class SharedComponentHandler implements OnInit {
 	private classParentCache = new Map<AbstractConstructor, readonly AbstractConstructor[]>();
 	private polymorphicIds = new Map<AbstractConstructor, readonly string[]>();
-	private atomObserver!: AtomObserver;
 
 	constructor(private components: Components) {}
 
@@ -45,10 +43,6 @@ export class SharedComponentHandler implements OnInit {
 		Modding.onListenerAdded<onSetupSharedComponent>((val) => val.onSetup());
 		IsClient && this.onClientSetup();
 		IsServer && this.onServerSetup();
-	}
-
-	public GetAtomObserver() {
-		return this.atomObserver;
 	}
 
 	private getSharedComponentChild(componentSpecifier: string) {
@@ -277,9 +271,6 @@ export class SharedComponentHandler implements OnInit {
 	}
 
 	private onServerSetup() {
-		this.atomObserver = new AtomObserver();
-		this.atomObserver.Start();
-
 		remotes._shared_component_remote_event_Server.connect(async (player, componentInfo, eventName, args) => {
 			const component = await this.resolveComponent(componentInfo);
 			if (!component) return;
