@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { BaseComponent, Component } from "@flamework/components";
 import { onSetupSharedComponent } from "./shared-component-handler";
-import { HttpService, ReplicatedStorage, RunService } from "@rbxts/services";
+import { CollectionService, HttpService, ReplicatedStorage, RunService } from "@rbxts/services";
 import { DeepCloneTable, GetConstructorIdentifier, GetInheritanceTree } from "../utilities";
 import { ClassProducer, IClassProducer } from "@rbxts/reflex-class";
 import { remotes } from "../remotes";
@@ -74,6 +74,7 @@ abstract class SharedComponent<S = any, A extends object = {}, I extends Instanc
 	private broadcastConnection?: () => void;
 	private info?: SharedComponentInfo;
 	private remoteConnection!: () => void;
+	private attributeConnection?: RBXScriptConnection;
 
 	constructor() {
 		super();
@@ -232,13 +233,19 @@ abstract class SharedComponent<S = any, A extends object = {}, I extends Instanc
 			atoms: { atom: this.atom },
 		});
 
-		if (this.attributes.__SERVER_ID) {
-			addSharedComponent(this.attributes.__SERVER_ID, this.instance);
+		const id = this.instance.GetAttribute("__SERVER_ID");
+		if (id) {
+			addSharedComponent(id as string, this.instance);
 		}
 
-		this.onAttributeChanged("__SERVER_ID", (id, oldValue) => {
-			oldValue && ClientSharedComponents.delete(oldValue);
+		let oldValueId = id as string | undefined;
+		this.attributeConnection = this.instance.GetAttributeChangedSignal("__SERVER_ID").Connect(() => {
+			oldValueId && ClientSharedComponents.delete(oldValueId);
+
+			const id = this.instance.GetAttribute("__SERVER_ID") as string;
 			id && addSharedComponent(id, this.instance);
+
+			oldValueId = id;
 		});
 
 		remotes._shared_component_start.fire(this.instance);
@@ -277,6 +284,7 @@ abstract class SharedComponent<S = any, A extends object = {}, I extends Instanc
 		super.destroy();
 		this.broadcastConnection?.();
 		this.remoteConnection?.();
+		this.attributeConnection?.Disconnect();
 		this._classProducerLink.Destroy();
 
 		for (const [name, remote] of pairs(this.remotes)) {
