@@ -1,6 +1,6 @@
 import { Component } from "@flamework/components";
 import { OnStart } from "@flamework/core";
-import { Action } from "@rbxts/reflex-class";
+import { Action } from "@rbxts/shared-components-flamework";
 import { ValueStorageComponent } from "shared/components/valueStorageComponent";
 
 @Component({
