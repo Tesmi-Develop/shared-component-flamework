@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { BaseComponent, Component } from "@flamework/components";
+import { OnStart } from "@flamework/core";
 import { Constructor } from "@flamework/core/out/utility";
 import { Signal } from "@rbxts/beacon";
 import { atom, Atom, subscribe } from "@rbxts/charm";
@@ -44,7 +45,7 @@ export
 @Component()
 abstract class SharedComponent<S = any, A extends object = {}, I extends Instance = Instance>
 	extends BaseComponent<A & { __SERVER_ID?: string }, I>
-	implements onSetupSharedComponent
+	implements onSetupSharedComponent, OnStart
 {
 	protected pointer?: Pointer;
 	protected abstract state: S;
@@ -79,6 +80,8 @@ abstract class SharedComponent<S = any, A extends object = {}, I extends Instanc
 		this.initSharedActions();
 		this.tree = GetInheritanceTree(this.getConstructor(), SharedComponent as Constructor);
 	}
+
+	public onStart(): void {}
 
 	/**
 	 * @returns The current state of the component.
@@ -235,7 +238,7 @@ abstract class SharedComponent<S = any, A extends object = {}, I extends Instanc
 			return;
 		}
 
-		this.attributes.__SERVER_ID = HttpService.GenerateGUID(false) as never;
+		this.attributes.__SERVER_ID = `${HttpService.GenerateGUID(false)}-${tick()}` as never;
 		addSharedComponent(this.attributes.__SERVER_ID!, this.instance);
 	}
 
@@ -269,7 +272,7 @@ abstract class SharedComponent<S = any, A extends object = {}, I extends Instanc
 		};
 
 		this.remoteConnection = remotes._shared_component_start.connect(
-			(player, instance) => instance === this.instance && hydrate(player),
+			(player, id) => id === this.attributes.__SERVER_ID && hydrate(player),
 		);
 	}
 
@@ -291,9 +294,11 @@ abstract class SharedComponent<S = any, A extends object = {}, I extends Instanc
 			id && addSharedComponent(id, this.instance);
 
 			oldValueId = id;
+
+			if (id) remotes._shared_component_start.fire(id);
 		});
 
-		remotes._shared_component_start.fire(this.instance);
+		if (id !== undefined) remotes._shared_component_start.fire(id as string);
 	}
 
 	public destroy() {
