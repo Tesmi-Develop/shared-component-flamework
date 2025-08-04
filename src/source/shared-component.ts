@@ -5,10 +5,10 @@ import { Constructor } from "@flamework/core/out/utility";
 import { Signal } from "@rbxts/beacon";
 import { atom, Atom, subscribe } from "@rbxts/charm";
 import { client, ClientSyncer, server, ServerSyncer, SyncPatch, SyncPayload } from "@rbxts/charm-sync";
-import { HttpService, ReplicatedStorage, RunService } from "@rbxts/services";
+import { HttpService, Players, ReplicatedStorage, RunService } from "@rbxts/services";
 import { remotes } from "../remotes";
-import { SharedComponentInfo } from "../types";
-import { DeepCloneTable, GetConstructorIdentifier, GetInheritanceTree } from "../utilities";
+import { PlayerAction, SharedComponentInfo } from "../types";
+import { GetConstructorIdentifier, GetInheritanceTree } from "../utilities";
 import { ISharedNetwork } from "./network";
 import { Pointer } from "./pointer";
 import { onSetupSharedComponent } from "./shared-component-handler";
@@ -53,15 +53,20 @@ abstract class SharedComponent<S = any, A extends object = {}, I extends Instanc
 	protected sender!: ServerSyncer<{}, false>;
 	/** @client */
 	protected isBlockingServerDispatches = false;
+	/** @client */
+	protected isAutoConnect = true;
+	private isConnected = false;
 	protected readonly remotes: Record<string, ISharedNetwork> = {};
 	protected atom: Atom<S>;
 
 	private isEnableDevTool = false;
 	private tree: Constructor[];
 	private info?: SharedComponentInfo;
-	private remoteConnection!: () => void;
 	private attributeConnection?: RBXScriptConnection;
 	private listeners = new Set<() => void>();
+	private connectedPlayers = new Set<Player>();
+	private unsubscribeSyncer?: () => void;
+	private playerRemovingConnection?: RBXScriptConnection;
 
 	constructor() {
 		super();
@@ -88,6 +93,15 @@ abstract class SharedComponent<S = any, A extends object = {}, I extends Instanc
 	 */
 	public GetState() {
 		return this.state;
+	}
+
+	/**
+	 * Gets whether the component is currently connected to the server.
+	 * @returns Whether the component is currently connected to the server.
+	 * @client
+	 */
+	public GetIsConnected(): boolean {
+		return this.isConnected;
 	}
 
 	/**
@@ -147,8 +161,45 @@ abstract class SharedComponent<S = any, A extends object = {}, I extends Instanc
 			PointerID: this.pointer ? Pointer.GetPointerID(this.pointer) : undefined,
 		};
 
+		if (info.ServerId !== this.attributes.__SERVER_ID) {
+			info.ServerId = this.attributes.__SERVER_ID;
+		}
+
 		this.info = info;
 		return info;
+	}
+
+	/**
+	 * Disconnects a player.
+	 *
+	 * @param player - The player to disconnect.
+	 * @server
+	 */
+
+	public DisconnectPlayer(player: Player) {
+		if (!this.connectedPlayers.has(player)) return;
+
+		this.connectedPlayers.delete(player);
+		this.OnDisconnectedPlayer(player);
+		remotes._shared_component_disconnected.fire(player, this.GenerateInfo());
+	}
+
+	/**
+	 * Disconnects the local player.
+	 * @client
+	 */
+	public Disconnect() {
+		if (!this.isConnected) return;
+		this.sendDisconnectAction();
+	}
+
+	/**
+	 * Connects the local player.
+	 * @client
+	 */
+	public Connect() {
+		if (this.isConnected) return;
+		this.sendConnectAction();
 	}
 
 	/**
@@ -158,8 +209,21 @@ abstract class SharedComponent<S = any, A extends object = {}, I extends Instanc
 	 * @param {Player} player - The player for whom the sync patch is being resolved.
 	 * @param {SyncPatch<S>} data - The sync patch to be resolved.
 	 * @return {boolean} Returns `true` if the sync patch is allowed to be synced for the player, `false` otherwise.
+	 * @server
 	 */
 	public ResolveIsSyncForPlayer(player: Player, data: SyncPatch<S>): boolean {
+		return true;
+	}
+
+	/**
+	 * Determines whether the specified player has access to the connection.
+	 *
+	 * @param {Player} player - The player for whom access is being resolved.
+	 * @return {boolean} Returns `true` if the player is allowed to the connection, `false` otherwise.
+	 * @server
+	 */
+
+	public ResolveIsAccessConnectionForPlayer(player: Player): boolean {
 		return true;
 	}
 
@@ -169,9 +233,57 @@ abstract class SharedComponent<S = any, A extends object = {}, I extends Instanc
 	 * @param {Player} player - The player for whom the sync data is being resolved.
 	 * @param {SyncPatch<S>} data - The sync data to be resolved.
 	 * @return {SyncPatch<S>} - The resolved sync data.
+	 * @server
 	 */
 	public ResolveSyncForPlayer(player: Player, data: SyncPatch<S>): SyncPatch<S> {
 		return data;
+	}
+
+	/**
+	 * Called when a player connects to the component.
+	 * @param {Player} player The player that connected.
+	 * @server
+	 */
+	public OnConnectedPlayer(player: Player) {}
+
+	/**
+	 * Called when a player disconnects to the component.
+	 * @param {Player} player The player that disconnected.
+	 * @server
+	 */
+	public OnDisconnectedPlayer(player: Player) {}
+
+	/**
+	 * Called when a local player connects to the component.
+	 * @client
+	 */
+	public OnConnected() {}
+
+	/**
+	 * Called when a local player disconnects to the component.
+	 * @client
+	 */
+	public OnDisconnected() {}
+
+	/**
+	 * Retrieves the set of players currently connected to the component.
+	 *
+	 * @returns A set of connected players.
+	 * @server
+	 */
+	public GetConnectedPlayers() {
+		return this.connectedPlayers as ReadonlySet<Player>;
+	}
+
+	/**
+	 * Checks if a player is currently connected to the component.
+	 *
+	 * @param {Player} player - The player to check for connection status.
+	 * @return {boolean} Returns `true` if the player is connected, `false` otherwise.
+	 * @server
+	 **/
+	public IsConnectedPlayer(player: Player): boolean {
+		return this.connectedPlayers.has(player);
 	}
 
 	/** @client */
@@ -205,6 +317,48 @@ abstract class SharedComponent<S = any, A extends object = {}, I extends Instanc
 			args: [],
 			state: this.atom(),
 		});
+	}
+
+	/**
+	 * @internal
+	 * @hidden
+	 **/
+	public __OnPlayerConnect(player: Player) {
+		const isAccess = this.ResolveIsAccessConnectionForPlayer(player);
+		if (!isAccess) return false;
+
+		this.connectedPlayers.add(player);
+		this.OnConnectedPlayer(player);
+		this.__Hydrate(player);
+
+		return true;
+	}
+
+	/**
+	 * @internal
+	 * @hidden
+	 **/
+	public __OnPlayerDisconnect(player: Player) {
+		this.connectedPlayers.delete(player);
+		this.OnDisconnectedPlayer(player);
+	}
+
+	/**
+	 * @internal
+	 * @hidden
+	 **/
+	public __Hydrate = (player: Player) => {
+		this.sender.hydrate(player);
+	};
+
+	/**
+	 * @internal
+	 * @hidden
+	 **/
+	public __Disconnected() {
+		if (!this.isConnected) return;
+		this.isConnected = false;
+		this.OnDisconnected();
 	}
 
 	/** @hidden **/
@@ -244,36 +398,46 @@ abstract class SharedComponent<S = any, A extends object = {}, I extends Instanc
 
 	private _onStartServer() {
 		this.onAttributeChanged("__SERVER_ID", (id, oldValue) => {
-			oldValue && ClientSharedComponents.delete(oldValue);
-			id && addSharedComponent(id, this.instance);
+			if (oldValue) ClientSharedComponents.delete(oldValue);
+			if (id) addSharedComponent(id, this.instance);
 		});
 
 		this.initServerId();
 		this.sender = server({ atoms: { atom: this.atom } });
 
-		this.sender.connect((player, payload) => {
+		this.unsubscribeSyncer = this.sender.connect((player, payload) => {
+			if (!this.connectedPlayers.has(player)) return;
 			if (!this.ResolveIsSyncForPlayer(player, (payload.data as Record<string, unknown>).atom as never)) return;
 
-			const copyPayload = DeepCloneTable(payload) as { type: "init"; data: { atom: S } };
-			const data = this.ResolveSyncForPlayer(player, copyPayload.data.atom as never);
-			copyPayload.data.atom = data as never;
+			const data = this.ResolveSyncForPlayer(player, (payload.data as Record<string, unknown>).atom as never);
+			(payload.data as Record<string, unknown>).atom = data as never;
 
-			remotes._shared_component_dispatch.fire(player, copyPayload, this.GenerateInfo());
+			remotes._shared_component_dispatch.fire(player, payload, this.GenerateInfo());
 		});
 
-		const hydrate = (player: Player) => {
-			if (!this.ResolveIsSyncForPlayer(player, this.atom() as never)) return;
+		this.playerRemovingConnection = Players.PlayerRemoving.Connect((player) => {
+			if (!this.connectedPlayers.has(player)) return;
+			this.connectedPlayers.delete(player);
+			this.OnDisconnectedPlayer(player);
+		});
+	}
 
-			remotes._shared_component_dispatch.fire(
-				player,
-				{ type: "init", data: { atom: this.atom() } },
-				this.GenerateInfo(),
-			);
-		};
+	/** @client */
+	private sendConnectAction() {
+		remotes._shared_component_connection(this.GenerateInfo(), PlayerAction.Connect).then((success) => {
+			if (!success || this.isConnected) return;
+			this.isConnected = true;
+			this.OnConnected();
+		});
+	}
 
-		this.remoteConnection = remotes._shared_component_start.connect(
-			(player, id) => id === this.attributes.__SERVER_ID && hydrate(player),
-		);
+	/** @client */
+	private sendDisconnectAction() {
+		remotes._shared_component_connection(this.GenerateInfo(), PlayerAction.Disconnect).then((success) => {
+			if (!success || !this.isConnected) return;
+			this.isConnected = false;
+			this.OnDisconnected();
+		});
 	}
 
 	private _onStartClient() {
@@ -282,30 +446,31 @@ abstract class SharedComponent<S = any, A extends object = {}, I extends Instanc
 		});
 
 		const id = this.instance.GetAttribute("__SERVER_ID");
-		if (id) {
+		if (id !== undefined) {
 			addSharedComponent(id as string, this.instance);
 		}
 
 		let oldValueId = id as string | undefined;
 		this.attributeConnection = this.instance.GetAttributeChangedSignal("__SERVER_ID").Connect(() => {
-			oldValueId && ClientSharedComponents.delete(oldValueId);
+			if (oldValueId !== undefined) ClientSharedComponents.delete(oldValueId);
 
 			const id = this.instance.GetAttribute("__SERVER_ID") as string;
-			id && addSharedComponent(id, this.instance);
+			if (id !== undefined) addSharedComponent(id, this.instance);
 
 			oldValueId = id;
-
-			if (id) remotes._shared_component_start.fire(id);
+			if (id !== undefined && !this.isConnected && this.isAutoConnect) this.sendConnectAction();
 		});
 
-		if (id !== undefined) remotes._shared_component_start.fire(id as string);
+		if (id !== undefined && !this.isConnected && this.isAutoConnect) this.sendConnectAction();
 	}
 
 	public destroy() {
 		super.destroy();
-		this.remoteConnection?.();
 		this.attributeConnection?.Disconnect();
+		this.playerRemovingConnection?.Disconnect();
+		this.unsubscribeSyncer?.();
 		this.listeners.forEach((unsubscribe) => unsubscribe());
+		this.sendDisconnectAction();
 
 		for (const [_, remote] of pairs(this.remotes)) {
 			remote.Destroy();

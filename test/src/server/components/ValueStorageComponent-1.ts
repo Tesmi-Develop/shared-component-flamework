@@ -1,12 +1,12 @@
 import { Component } from "@flamework/components";
 import { OnStart } from "@flamework/core";
 import { Action } from "@rbxts/shared-components-flamework";
-import { ValueStorageComponent } from "shared/components/valueStorageComponent";
+import { ValueStorageComponent1 } from "shared/components/valueStorageComponent-1";
 
 @Component({
-	tag: "ValueStorageComponent",
+	tag: "ValueStorageComponent1",
 })
-export class ServerValueStorageComponent extends ValueStorageComponent implements OnStart {
+export class ServerValueStorageComponent extends ValueStorageComponent1 implements OnStart {
 	public onStart() {
 		task.spawn(() => {
 			while (task.wait(3)) {
@@ -20,17 +20,12 @@ export class ServerValueStorageComponent extends ValueStorageComponent implement
 		});
 	}
 
-	public OnDisconnectedPlayer(player: Player): void {
-		print(`Player ${player.Name} disconnected`);
-	}
-
-	public ResolveSyncForPlayer(
-		player: Player,
-		data: { readonly value?: number | undefined },
-	): { readonly value?: number | undefined } {
-		return {
-			value: (data.value ?? 1) * 2,
-		};
+	public ResolveIsAccessConnectionForPlayer(player: Player): boolean {
+		const success = math.random() > 0.5;
+		if (!success) {
+			print(`Player ${player.Name} is not allowed to connect`);
+		}
+		return success;
 	}
 
 	@Action()

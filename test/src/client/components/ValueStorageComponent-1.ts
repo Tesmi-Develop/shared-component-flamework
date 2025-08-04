@@ -1,14 +1,12 @@
 import { Component } from "@flamework/components";
 import { OnStart } from "@flamework/core";
 import { Subscribe } from "@rbxts/shared-components-flamework";
-import { ValueStorageComponent } from "shared/components/valueStorageComponent";
+import { ValueStorageComponent1 } from "shared/components/valueStorageComponent-1";
 
 @Component({
-	tag: "ValueStorageComponent",
+	tag: "ValueStorageComponent1",
 })
-export class ClientValueStorageComponent extends ValueStorageComponent implements OnStart {
-	protected isAutoConnect = false;
-
+export class ClientValueStorageComponent extends ValueStorageComponent1 implements OnStart {
 	onStart(): void {
 		this.Subscribe((state) => {
 			print(state);
@@ -16,11 +14,6 @@ export class ClientValueStorageComponent extends ValueStorageComponent implement
 
 		this.remotes.ping.Connect((value) => {
 			this.remotes.pong.Fire(value);
-		});
-
-		print("Start connection");
-		task.delay(5, () => {
-			this.Connect();
 		});
 	}
 

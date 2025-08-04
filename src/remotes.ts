@@ -1,8 +1,7 @@
-import { Client, Server, createRemotes, remote } from "@rbxts/remo";
-import { t } from "@rbxts/t";
-import { SharedComponentInfo } from "./types";
 import { Flamework } from "@flamework/core";
 import { SyncPayload } from "@rbxts/charm-sync";
+import { Client, Server, createRemotes, remote } from "@rbxts/remo";
+import { PlayerAction, SharedComponentInfo } from "./types";
 
 export const remotes = createRemotes({
 	_shared_component_dispatch: remote<Client, [payload: SyncPayload<{}>, componentInfo: SharedComponentInfo]>(
@@ -25,7 +24,12 @@ export const remotes = createRemotes({
 		[componentInfo: SharedComponentInfo, eventName: string, args: unknown[]]
 	>(Flamework.createGuard(), Flamework.createGuard()),
 
-	_shared_component_start: remote<Server, [id: string]>(t.string),
+	_shared_component_connection: remote<Server, [componentInfo: SharedComponentInfo, action: PlayerAction]>(
+		Flamework.createGuard(),
+		Flamework.createGuard(),
+	).returns<boolean>(Flamework.createGuard()),
+
+	_shared_component_disconnected: remote<Client, [componentInfo: SharedComponentInfo]>(Flamework.createGuard()),
 
 	_shared_component_component_interaction: remote<
 		Client,

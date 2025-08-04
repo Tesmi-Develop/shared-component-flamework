@@ -1,19 +1,19 @@
-import { Controller, Modding, OnInit, Reflect, Service } from "@flamework/core";
-import { remotes } from "../remotes";
-import { SharedComponent, WaitForClientSharedComponent } from "./shared-component";
-import { GetParentConstructor, IsClient, IsServer, logWarning } from "../utilities";
-import { SharedComponentInfo } from "../types";
 import { BaseComponent, Component, Components } from "@flamework/components";
-import { Pointer } from "./pointer";
+import { AbstractConstructor, ConstructorRef } from "@flamework/components/out/utility";
+import { Controller, Modding, OnInit, Reflect, Service } from "@flamework/core";
+import { SyncPayload } from "@rbxts/charm-sync";
+import { Players } from "@rbxts/services";
+import { remotes } from "../remotes";
+import { PlayerAction, SharedComponentInfo } from "../types";
+import { GetConstructorIdentifier, GetParentConstructor, IsClient, IsServer, logWarning } from "../utilities";
+import { ACTION_GUARD_FAILED, PLAYER_NOT_CONNECTED, SharedRemoteAction } from "./network/action";
 import {
 	IsSharedComponentRemoteEvent,
 	SharedRemoteEventClientToServer,
 	SharedRemoteEventServerToClient,
 } from "./network/event";
-import { ACTION_GUARD_FAILED, SharedRemoteAction } from "./network/action";
-import { Players } from "@rbxts/services";
-import { AbstractConstructor, ConstructorRef } from "@flamework/components/out/utility";
-import { SyncPayload } from "@rbxts/charm-sync";
+import { Pointer } from "./pointer";
+import { SharedComponent, WaitForClientSharedComponent } from "./shared-component";
 
 export interface onSetupSharedComponent {
 	onSetup(): void;
@@ -187,7 +187,7 @@ export class SharedComponentHandler implements OnInit {
 
 		const [success, instance] = WaitForClientSharedComponent(ServerId).timeout(15).await();
 		if (!success) {
-			warn(`Attempt to dispatch component with missing serverID\n ServerId: ${ServerId}`);
+			logWarning(`Attempt to dispatch component with missing serverID\n ServerId: ${ServerId}`);
 			return;
 		}
 
@@ -224,7 +224,11 @@ export class SharedComponentHandler implements OnInit {
 
 		if (sharedComponent.size() > 1) {
 			logWarning(
-				`Attempt to allow dispatching when an instance has multiple sharedComponent\n Instance: ${instance}\n SharedIdentifier: ${SharedIdentifier}\n ServerIdentifier: ${Identifier}`,
+				`Attempt to allow dispatching when an instance has multiple sharedComponent\n 
+				Instance: ${instance}\n 
+				SharedIdentifier: ${SharedIdentifier}\n 
+				ServerIdentifier: ${Identifier}\n 
+				FoundComponents: ${sharedComponent.map((s) => GetConstructorIdentifier(getmetatable(s) as never)).join(", ")}`,
 			);
 			return;
 		}
@@ -235,7 +239,7 @@ export class SharedComponentHandler implements OnInit {
 	private onClientSetup() {
 		remotes._shared_component_dispatch.connect(async (actions, componentInfo) => {
 			const component = await this.resolveComponent(componentInfo);
-			component && this.invokeDispatch(component, actions);
+			if (component !== undefined) this.invokeDispatch(component, actions);
 		});
 
 		remotes._shared_component_remote_event_Client.connect(async (componentInfo, eventName, args) => {
@@ -260,7 +264,7 @@ export class SharedComponentHandler implements OnInit {
 
 			const [success, instance] = WaitForClientSharedComponent(info.ServerId).timeout(15).await();
 			if (!success) {
-				warn("Attempt to dispatch component with missing serverID\n ServerId: " + info.ServerId);
+				logWarning("Attempt to dispatch component with missing serverID\n ServerId: " + info.ServerId);
 				return;
 			}
 
@@ -268,12 +272,20 @@ export class SharedComponentHandler implements OnInit {
 				? this.components.addComponent(instance, componetID)
 				: this.components.removeComponent(instance, componetID);
 		});
+
+		remotes._shared_component_disconnected.connect(async (componentInfo) => {
+			const component = await this.resolveComponent(componentInfo);
+			if (!component) return;
+
+			component.__Disconnected();
+		});
 	}
 
 	private onServerSetup() {
 		remotes._shared_component_remote_event_Server.connect(async (player, componentInfo, eventName, args) => {
 			const component = await this.resolveComponent(componentInfo);
 			if (!component) return;
+			if (!component.IsConnectedPlayer(player)) return;
 
 			const remote = component.GetRemote(eventName);
 			if (!IsSharedComponentRemoteEvent(remote)) return;
@@ -286,6 +298,7 @@ export class SharedComponentHandler implements OnInit {
 		remotes._shared_component_remote_function_Server.onRequest(async (player, componentInfo, remoteName, args) => {
 			const component = await this.resolveComponent(componentInfo);
 			if (!component) return;
+			if (!component.IsConnectedPlayer(player)) return PLAYER_NOT_CONNECTED;
 
 			const remote = component.GetRemote(remoteName);
 			if (!IsSharedComponentRemoteEvent(remote)) return;
@@ -293,6 +306,24 @@ export class SharedComponentHandler implements OnInit {
 			if (!remote.GetGuard()(args)) return ACTION_GUARD_FAILED;
 
 			return remote.GetCallback()?.(player, ...(args as []));
+		});
+
+		remotes._shared_component_connection.onRequest(async (player, componentInfo, action) => {
+			const component = await this.resolveComponent(componentInfo);
+			if (!component) return false;
+
+			if (action === PlayerAction.Connect) {
+				if (component.IsConnectedPlayer(player)) return false;
+				return component.__OnPlayerConnect(player);
+			}
+
+			if (action === PlayerAction.Disconnect) {
+				if (!component.IsConnectedPlayer(player)) return false;
+				component.__OnPlayerDisconnect(player);
+				return true;
+			}
+
+			return false;
 		});
 	}
 }

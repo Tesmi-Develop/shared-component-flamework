@@ -7,7 +7,7 @@ interface State {
 }
 
 @Component()
-export class ValueStorageComponent extends SharedComponent<State> {
+export class ValueStorageComponent1 extends SharedComponent<State> {
 	protected state = {
 		value: 0,
 	};

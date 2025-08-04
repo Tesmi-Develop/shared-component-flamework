@@ -1,11 +1,14 @@
 import { t } from "@rbxts/t";
 import { ISharedNetwork } from ".";
-import { SharedComponent } from "../shared-component";
-import { IsClient } from "../../utilities";
 import { remotes } from "../../remotes";
+import { IsClient } from "../../utilities";
+import { SharedComponent } from "../shared-component";
 
 /** @internal */
 export const ACTION_GUARD_FAILED = "__ACTION_GUARD_FAILED";
+
+/** @internal */
+export const PLAYER_NOT_CONNECTED = "__PLAYER_NOT_CONNECTED";
 
 export interface ISharedRemoteAction<A extends unknown[], R> extends SharedRemoteAction<A, R> {
 	/**
@@ -75,15 +78,27 @@ export class SharedRemoteAction<A extends unknown[], R> implements ISharedNetwor
 	 * Arguments are validated on the server before they are processed.
 	 *
 	 * @client
+	 * @warning This function may throw with an error if:
+	 * - Argument type validation fails on the server
+	 * - The component is not connected
 	 */
 	public async Invoke(...args: A) {
 		assert(IsClient, "Function can't be invoked on server");
+
+		if (!this.componentReferense.GetIsConnected()) {
+			throw `Component with id ${this.componentReferense.GenerateInfo().ServerId} not connected`;
+		}
+
 		const result = await remotes._shared_component_remote_function_Server(
 			this.componentReferense.GenerateInfo(),
 			this.name,
 			args,
 		);
 
+		assert(
+			result !== PLAYER_NOT_CONNECTED,
+			`Component with id ${this.componentReferense.GenerateInfo().ServerId} not connected`,
+		);
 		assert(result !== ACTION_GUARD_FAILED, "Guard failed");
 
 		return result as R;

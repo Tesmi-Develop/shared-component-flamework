@@ -8,3 +8,8 @@ export interface SharedComponentInfo {
 	SharedIdentifier: string;
 	PointerID?: string;
 }
+
+export const enum PlayerAction {
+	Connect,
+	Disconnect,
+}

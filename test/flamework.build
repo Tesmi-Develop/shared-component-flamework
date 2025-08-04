@@ -27,7 +27,14 @@
 		"@rbxts/shared-components-flamework:out/src/source/shared-component-network/action@SharedRemoteAction": "$s:src/source/shared-component-network/action@SharedRemoteAction",
 		"@rbxts/shared-components-flamework:out/src/source/network/action@SharedRemoteAction": "$s:src/source/network/action@SharedRemoteAction",
 		"@rbxts/shared-components-flamework:out/src/source/network/event@SharedRemoteEventServerToClient": "$s:src/source/network/event@SharedRemoteEventServerToClient",
-		"@rbxts/shared-components-flamework:out/src/source/network/event@SharedRemoteEventClientToServer": "$s:src/source/network/event@SharedRemoteEventClientToServer"
+		"@rbxts/shared-components-flamework:out/src/source/network/event@SharedRemoteEventClientToServer": "$s:src/source/network/event@SharedRemoteEventClientToServer",
+		"@rbxts/shared-components-flamework:out/test/src/shared/components/valueStorageComponent copy@ValueStorageComponent": "$s:test/src/shared/components/valueStorageComponent copy@ValueStorageComponent",
+		"@rbxts/shared-components-flamework:out/test/src/shared/components/valueStorageComponent-1@ValueStorageComponent": "$s:test/src/shared/components/valueStorageComponent-1@ValueStorageComponent",
+		"@rbxts/shared-components-flamework:out/test/src/shared/components/valueStorageComponent-1@ValueStorageComponent1": "$s:test/src/shared/components/valueStorageComponent-1@ValueStorageComponent1",
+		"@rbxts/shared-components-flamework:out/test/src/server/components/ValueStorageComponent copy@ServerValueStorageComponent": "$s:test/src/server/components/ValueStorageComponent copy@ServerValueStorageComponent",
+		"@rbxts/shared-components-flamework:out/test/src/server/components/ValueStorageComponent-1@ServerValueStorageComponent": "$s:test/src/server/components/ValueStorageComponent-1@ServerValueStorageComponent",
+		"@rbxts/shared-components-flamework:out/test/src/client/components/ValueStorageComponent copy@ClientValueStorageComponent": "$s:test/src/client/components/ValueStorageComponent copy@ClientValueStorageComponent",
+		"@rbxts/shared-components-flamework:out/test/src/client/components/ValueStorageComponent-1@ClientValueStorageComponent": "$s:test/src/client/components/ValueStorageComponent-1@ClientValueStorageComponent"
 	},
 	"metadata": {},
 	"identifierPrefix": "$s",
@@ -115,6 +122,76 @@
 			"filePath": "out\\src\\source\\shared-component-handler.lua",
 			"internalId": "$s:src/source/shared-component-handler@B",
 			"decorators": []
+		},
+		{
+			"filePath": "out\\test\\src\\shared\\components\\valueStorageComponent copy.lua",
+			"internalId": "$s:test/src/shared/components/valueStorageComponent copy@ValueStorageComponent",
+			"decorators": [
+				{
+					"internalId": "$c:components@Component",
+					"name": "Component"
+				}
+			]
+		},
+		{
+			"filePath": "out\\test\\src\\shared\\components\\valueStorageComponent-1.lua",
+			"internalId": "$s:test/src/shared/components/valueStorageComponent-1@ValueStorageComponent",
+			"decorators": [
+				{
+					"internalId": "$c:components@Component",
+					"name": "Component"
+				}
+			]
+		},
+		{
+			"filePath": "out\\test\\src\\shared\\components\\valueStorageComponent-1.lua",
+			"internalId": "$s:test/src/shared/components/valueStorageComponent-1@ValueStorageComponent1",
+			"decorators": [
+				{
+					"internalId": "$c:components@Component",
+					"name": "Component"
+				}
+			]
+		},
+		{
+			"filePath": "out\\test\\src\\server\\components\\ValueStorageComponent copy.lua",
+			"internalId": "$s:test/src/server/components/ValueStorageComponent copy@ServerValueStorageComponent",
+			"decorators": [
+				{
+					"internalId": "$c:components@Component",
+					"name": "Component"
+				}
+			]
+		},
+		{
+			"filePath": "out\\test\\src\\server\\components\\ValueStorageComponent-1.lua",
+			"internalId": "$s:test/src/server/components/ValueStorageComponent-1@ServerValueStorageComponent",
+			"decorators": [
+				{
+					"internalId": "$c:components@Component",
+					"name": "Component"
+				}
+			]
+		},
+		{
+			"filePath": "out\\test\\src\\client\\components\\ValueStorageComponent copy.lua",
+			"internalId": "$s:test/src/client/components/ValueStorageComponent copy@ClientValueStorageComponent",
+			"decorators": [
+				{
+					"internalId": "$c:components@Component",
+					"name": "Component"
+				}
+			]
+		},
+		{
+			"filePath": "out\\test\\src\\client\\components\\ValueStorageComponent-1.lua",
+			"internalId": "$s:test/src/client/components/ValueStorageComponent-1@ClientValueStorageComponent",
+			"decorators": [
+				{
+					"internalId": "$c:components@Component",
+					"name": "Component"
+				}
+			]
 		}
 	]
 }

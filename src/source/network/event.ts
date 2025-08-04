@@ -1,10 +1,10 @@
 import { Signal } from "@rbxts/beacon";
-import { SharedComponent } from "../shared-component";
-import { t } from "@rbxts/t";
-import { IsClient, IsServer } from "../../utilities";
-import { remotes } from "../../remotes";
 import { Players } from "@rbxts/services";
+import { t } from "@rbxts/t";
 import { ISharedNetwork } from ".";
+import { remotes } from "../../remotes";
+import { IsClient, IsServer, logWarning } from "../../utilities";
+import { SharedComponent } from "../shared-component";
 import { SharedRemoteAction } from "./action";
 
 export const IsSharedComponentRemoteEvent = (
@@ -59,6 +59,14 @@ export class SharedRemoteEventServerToClient<A extends unknown[]> implements ISh
 		return this.guard;
 	}
 
+	private filterPlayersToConnect(players: Player[] | Player) {
+		if (typeIs(players, "Instance")) {
+			return this.componentReferense.IsConnectedPlayer(players) ? players : undefined;
+		}
+
+		return players.filter((player) => this.componentReferense.IsConnectedPlayer(player));
+	}
+
 	/**
 	 * Sends this request to the specified player(s).
 	 * @param players The player(s) that will receive this event
@@ -66,6 +74,10 @@ export class SharedRemoteEventServerToClient<A extends unknown[]> implements ISh
 	 */
 	public Fire(players: Player[] | Player, ...args: A) {
 		assert(IsServer, "Event can't be fired on client");
+
+		players = this.filterPlayersToConnect(players) as Player[] | Player;
+		if (players === undefined) return;
+
 		this.send(typeIs(players, "Instance") ? [players] : players, ...args);
 	}
 
@@ -76,6 +88,10 @@ export class SharedRemoteEventServerToClient<A extends unknown[]> implements ISh
 	 */
 	public Except(players: Player[] | Player, ...args: A) {
 		assert(IsServer, "Event can't be fired on client");
+
+		players = this.filterPlayersToConnect(players) as Player[] | Player;
+		if (players === undefined) return;
+
 		const playerArray = typeIs(players, "Instance") ? [players] : players;
 
 		this.send(
@@ -91,7 +107,10 @@ export class SharedRemoteEventServerToClient<A extends unknown[]> implements ISh
 	public Broadcast(...args: A) {
 		assert(IsServer, "Event can't be fired on client");
 
-		this.send(Players.GetPlayers(), ...args);
+		const players = this.filterPlayersToConnect(Players.GetPlayers());
+		if (!players) return;
+
+		this.send(players as Player[], ...args);
 	}
 
 	/** @client */
@@ -156,6 +175,11 @@ export class SharedRemoteEventClientToServer<A extends unknown[]> implements ISh
 	 */
 	public Fire(...args: A) {
 		assert(IsClient, "Event can't be fired on server");
+
+		if (!this.componentReferense.GetIsConnected()) {
+			logWarning(`Component with id ${this.componentReferense.GenerateInfo().ServerId} not connected`);
+			return;
+		}
 
 		remotes._shared_component_remote_event_Server.fire(this.componentReferense.GenerateInfo(), this.name, args);
 	}
