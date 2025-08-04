@@ -223,7 +223,7 @@ abstract class SharedComponent<S = any, A extends object = {}, I extends Instanc
 	 * @server
 	 */
 
-	public ResolveIsAccessConnectionForPlayer(player: Player): boolean {
+	public ResolveConnectionPermission(player: Player): boolean {
 		return true;
 	}
 
@@ -324,7 +324,7 @@ abstract class SharedComponent<S = any, A extends object = {}, I extends Instanc
 	 * @hidden
 	 **/
 	public __OnPlayerConnect(player: Player) {
-		const isAccess = this.ResolveIsAccessConnectionForPlayer(player);
+		const isAccess = this.ResolveConnectionPermission(player);
 		if (!isAccess) return false;
 
 		this.connectedPlayers.add(player);

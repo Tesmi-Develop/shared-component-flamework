@@ -243,6 +243,16 @@ ResolveSyncForPlayer(player, patch) {
 }
 ```
 
+``ResolveConnectionPermission(player: Player): boolean``
+
+**Determines whether a player is authorized to establish a connection to this shared component instance**
+
+```ts
+ResolveConnectionPermission(player, patch) {
+	return patch
+}
+```
+
 ``AttachDevTool(): void``
 
 **Enables debugging interface**

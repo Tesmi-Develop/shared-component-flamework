@@ -20,7 +20,7 @@ export class ServerValueStorageComponent extends ValueStorageComponent1 implemen
 		});
 	}
 
-	public ResolveIsAccessConnectionForPlayer(player: Player): boolean {
+	public ResolveConnectionPermission(player: Player): boolean {
 		const success = math.random() > 0.5;
 		if (!success) {
 			print(`Player ${player.Name} is not allowed to connect`);
