@@ -246,7 +246,7 @@ export class SharedComponentHandler implements OnInit {
 			const component = await this.resolveComponent(componentInfo);
 			if (!component) return;
 
-			const remote = component.GetRemote(eventName);
+			const remote = component.__GetRemote(eventName);
 			if (!IsSharedComponentRemoteEvent(remote)) return;
 			if (!SharedRemoteEventServerToClient.Indefinitely(remote)) return;
 			if (!remote.GetGuard()(args)) return;
@@ -287,7 +287,7 @@ export class SharedComponentHandler implements OnInit {
 			if (!component) return;
 			if (!component.IsConnectedPlayer(player)) return;
 
-			const remote = component.GetRemote(eventName);
+			const remote = component.__GetRemote(eventName);
 			if (!IsSharedComponentRemoteEvent(remote)) return;
 			if (!SharedRemoteEventClientToServer.Indefinitely(remote)) return;
 			if (!remote.GetGuard()(args)) return;
@@ -300,7 +300,7 @@ export class SharedComponentHandler implements OnInit {
 			if (!component) return;
 			if (!component.IsConnectedPlayer(player)) return PLAYER_NOT_CONNECTED;
 
-			const remote = component.GetRemote(remoteName);
+			const remote = component.__GetRemote(remoteName);
 			if (!IsSharedComponentRemoteEvent(remote)) return;
 			if (!SharedRemoteAction.Indefinitely(remote)) return;
 			if (!remote.GetGuard()(args)) return ACTION_GUARD_FAILED;

@@ -299,7 +299,7 @@ abstract class SharedComponent<S = any, A extends object = {}, I extends Instanc
 	}
 
 	/** @internal @hidden */
-	public GetRemote(name: string) {
+	public __GetRemote(name: string) {
 		return this.remotes[name as never];
 	}
 
