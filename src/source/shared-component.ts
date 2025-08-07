@@ -188,18 +188,18 @@ abstract class SharedComponent<S = any, A extends object = {}, I extends Instanc
 	 * Disconnects the local player.
 	 * @client
 	 */
-	public Disconnect() {
-		if (!this.isConnected) return;
-		this.sendDisconnectAction();
+	public async Disconnect() {
+		if (!this.isConnected) return true;
+		return await this.sendDisconnectAction();
 	}
 
 	/**
 	 * Connects the local player.
 	 * @client
 	 */
-	public Connect() {
-		if (this.isConnected) return;
-		this.sendConnectAction();
+	public async Connect() {
+		if (this.isConnected) return true;
+		return await this.sendConnectAction();
 	}
 
 	/**
@@ -423,21 +423,29 @@ abstract class SharedComponent<S = any, A extends object = {}, I extends Instanc
 	}
 
 	/** @client */
-	private sendConnectAction() {
-		remotes._shared_component_connection(this.GenerateInfo(), PlayerAction.Connect).then((success) => {
-			if (!success || this.isConnected) return;
-			this.isConnected = true;
-			this.OnConnected();
-		});
+	private async sendConnectAction() {
+		if (this.isConnected) return true;
+
+		const success = await remotes._shared_component_connection(this.GenerateInfo(), PlayerAction.Connect);
+		if (!success) return false;
+
+		this.isConnected = true;
+		this.OnConnected();
+
+		return true;
 	}
 
 	/** @client */
-	private sendDisconnectAction() {
-		remotes._shared_component_connection(this.GenerateInfo(), PlayerAction.Disconnect).then((success) => {
-			if (!success || !this.isConnected) return;
-			this.isConnected = false;
-			this.OnDisconnected();
-		});
+	private async sendDisconnectAction() {
+		if (!this.isConnected) return true;
+
+		const success = await remotes._shared_component_connection(this.GenerateInfo(), PlayerAction.Disconnect);
+		if (!success) return false;
+
+		this.isConnected = false;
+		this.OnDisconnected();
+
+		return true;
 	}
 
 	private _onStartClient() {
@@ -470,7 +478,10 @@ abstract class SharedComponent<S = any, A extends object = {}, I extends Instanc
 		this.playerRemovingConnection?.Disconnect();
 		this.unsubscribeSyncer?.();
 		this.listeners.forEach((unsubscribe) => unsubscribe());
-		this.sendDisconnectAction();
+
+		if (IsClient) {
+			this.sendDisconnectAction();
+		}
 
 		for (const [_, remote] of pairs(this.remotes)) {
 			remote.Destroy();
