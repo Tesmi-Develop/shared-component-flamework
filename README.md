@@ -3,7 +3,7 @@
 <div align="center">
 
 [![ISC License](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![npm version](https://www.npmjs.com/package/@rbxts/shared-components-flamework)](https://www.npmjs.com/package/@rbxts/shared-components-flamework)
+[![npm version](https://img.shields.io/npm/v/@rbxts/shared-components-flamework)](https://www.npmjs.com/package/@rbxts/shared-components-flamework)
 
 <div align="left">
 
