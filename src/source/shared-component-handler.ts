@@ -15,10 +15,6 @@ import {
 import { Pointer } from "./pointer";
 import { SharedComponent, WaitForClientSharedComponent } from "./shared-component";
 
-export interface onSetupSharedComponent {
-	onSetup(): void;
-}
-
 @Service({
 	loadOrder: 0,
 })
@@ -40,7 +36,6 @@ export class SharedComponentHandler implements OnInit {
 			this.polymorphicIds.set(constructor, this.getPolymorphicIds(constructor));
 		});
 
-		Modding.onListenerAdded<onSetupSharedComponent>((val) => val.onSetup());
 		IsClient && this.onClientSetup();
 		IsServer && this.onServerSetup();
 	}

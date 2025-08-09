@@ -11,7 +11,6 @@ import { PlayerAction, SharedComponentInfo } from "../types";
 import { GetConstructorIdentifier, GetInheritanceTree } from "../utilities";
 import { ISharedNetwork } from "./network";
 import { Pointer } from "./pointer";
-import { onSetupSharedComponent } from "./shared-component-handler";
 
 const IsServer = RunService.IsServer();
 const IsClient = RunService.IsClient();
@@ -45,7 +44,7 @@ export
 @Component()
 abstract class SharedComponent<S = any, A extends object = {}, I extends Instance = Instance>
 	extends BaseComponent<A & { __SERVER_ID?: string }, I>
-	implements onSetupSharedComponent, OnStart
+	implements OnStart
 {
 	protected pointer?: Pointer;
 	protected abstract state: S;
@@ -152,17 +151,15 @@ abstract class SharedComponent<S = any, A extends object = {}, I extends Instanc
 	 * @return {SharedComponentInfo} The information about the shared component.
 	 */
 	public GenerateInfo(): SharedComponentInfo {
-		assert(this.attributes.__SERVER_ID, "Shared component must have a server id");
-
 		const info = this.info ?? {
-			ServerId: this.attributes.__SERVER_ID,
+			ServerId: this.attributes.__SERVER_ID ?? "",
 			Identifier: GetConstructorIdentifier(this.getConstructor()),
 			SharedIdentifier: GetConstructorIdentifier(this.tree[this.tree.size() - 1]),
 			PointerID: this.pointer ? Pointer.GetPointerID(this.pointer) : undefined,
 		};
 
 		if (info.ServerId !== this.attributes.__SERVER_ID) {
-			info.ServerId = this.attributes.__SERVER_ID;
+			info.ServerId = this.attributes.__SERVER_ID ?? "";
 		}
 
 		this.info = info;
@@ -362,7 +359,7 @@ abstract class SharedComponent<S = any, A extends object = {}, I extends Instanc
 	}
 
 	/** @hidden **/
-	public onSetup() {
+	private onSetup() {
 		this.atom(this.state);
 		this.pointer?.AddComponent(this);
 		IsServer && this._onStartServer();
@@ -379,6 +376,7 @@ abstract class SharedComponent<S = any, A extends object = {}, I extends Instanc
 				newRemote.componentReferense = this;
 				newRemote.name = i as string;
 			}
+			this.onSetup();
 			original?.(this);
 		};
 	}
