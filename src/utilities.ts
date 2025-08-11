@@ -26,7 +26,15 @@ export function logAssert<T>(condition: T, message?: string, DisplayTraceback = 
 }
 
 export function GetConstructorIdentifier(constructor: Constructor) {
-	return (Reflect.getMetadata(constructor, "identifier") as string) ?? "Not found id";
+	const identifier = Reflect.getOwnMetadata(constructor, "identifier") as string;
+	if (identifier === undefined) {
+		logWarning(
+			`Component ${constructor} does not have an identifier. Check for the presence of the @Components decorator.`,
+		);
+		return "MissingIdentifier";
+	}
+
+	return identifier;
 }
 
 export function GetParentConstructor(ctor: AbstractConstructor) {
