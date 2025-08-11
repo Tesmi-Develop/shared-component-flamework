@@ -1,5 +1,5 @@
 import { Constructor } from "@flamework/core/out/utility";
-import { GetConstructorIdentifier } from "../utilities";
+import { GetConstructorIdentifier, logAssert } from "../utilities";
 import type { SharedComponent } from "./shared-component";
 
 export class Pointer {
@@ -16,7 +16,7 @@ export class Pointer {
 	};
 
 	public static Create(id: string) {
-		assert(!Pointer.pointers.has(id), `Pointer with name ${id} already exists`);
+		logAssert(!Pointer.pointers.has(id), `Pointer with name ${id} already exists`);
 		const newPointer = new Pointer();
 		Pointer.pointers.set(id, newPointer);
 		Pointer.pointerID.set(newPointer, id);
@@ -34,7 +34,7 @@ export class Pointer {
 		const identifier = GetConstructorIdentifier(constructor);
 
 		if (this.componentMetadata === identifier) return;
-		assert(!this.componentMetadata, "Pointer already has a component");
+		logAssert(!this.componentMetadata, "Pointer already has a component");
 
 		this.componentMetadata = identifier;
 	}
@@ -44,7 +44,7 @@ export class Pointer {
 	}
 
 	public GetComponentMetadata() {
-		assert(this.componentMetadata, "Pointer has no component");
+		logAssert(this.componentMetadata, "Pointer has no component");
 		return this.componentMetadata;
 	}
 }

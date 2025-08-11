@@ -3,7 +3,7 @@ import { Players } from "@rbxts/services";
 import { t } from "@rbxts/t";
 import { ISharedNetwork } from ".";
 import { remotes } from "../../remotes";
-import { IsClient, IsServer, logWarning } from "../../utilities";
+import { IsClient, IsServer, logAssert, logWarning } from "../../utilities";
 import { SharedComponent } from "../shared-component";
 import { SharedRemoteAction } from "./action";
 
@@ -73,7 +73,7 @@ export class SharedRemoteEventServerToClient<A extends unknown[]> implements ISh
 	 * @server
 	 */
 	public Fire(players: Player[] | Player, ...args: A) {
-		assert(IsServer, "Event can't be fired on client");
+		logAssert(IsServer, "Event can't be fired on client");
 
 		players = this.filterPlayersToConnect(players) as Player[] | Player;
 		if (players === undefined) return;
@@ -87,7 +87,7 @@ export class SharedRemoteEventServerToClient<A extends unknown[]> implements ISh
 	 * @server
 	 */
 	public Except(players: Player[] | Player, ...args: A) {
-		assert(IsServer, "Event can't be fired on client");
+		logAssert(IsServer, "Event can't be fired on client");
 
 		players = this.filterPlayersToConnect(players) as Player[] | Player;
 		if (players === undefined) return;
@@ -105,7 +105,7 @@ export class SharedRemoteEventServerToClient<A extends unknown[]> implements ISh
 	 * @server
 	 */
 	public Broadcast(...args: A) {
-		assert(IsServer, "Event can't be fired on client");
+		logAssert(IsServer, "Event can't be fired on client");
 
 		const players = this.filterPlayersToConnect(Players.GetPlayers());
 		if (!players) return;
@@ -115,7 +115,7 @@ export class SharedRemoteEventServerToClient<A extends unknown[]> implements ISh
 
 	/** @client */
 	public Connect(callback: (...args: A) => void) {
-		assert(IsClient, "Event can't be connected on server");
+		logAssert(IsClient, "Event can't be connected on server");
 
 		return this.signal.Connect((...args) => {
 			if (!this.guard(args)) {
@@ -174,7 +174,7 @@ export class SharedRemoteEventClientToServer<A extends unknown[]> implements ISh
 	 * @client
 	 */
 	public Fire(...args: A) {
-		assert(IsClient, "Event can't be fired on server");
+		logAssert(IsClient, "Event can't be fired on server");
 
 		if (!this.componentReferense.GetIsConnected()) {
 			logWarning(`Component with id ${this.componentReferense.GenerateInfo().ServerId} not connected`);
@@ -186,7 +186,7 @@ export class SharedRemoteEventClientToServer<A extends unknown[]> implements ISh
 
 	/** @server */
 	public Connect(callback: (player: Player, ...args: A) => void) {
-		assert(IsServer, "Event can't be connected on client");
+		logAssert(IsServer, "Event can't be connected on client");
 
 		return this.signal.Connect((player, ...args) => {
 			if (!this.guard(args)) {

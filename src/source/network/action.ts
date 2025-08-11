@@ -1,7 +1,7 @@
 import { t } from "@rbxts/t";
 import { ISharedNetwork } from ".";
 import { remotes } from "../../remotes";
-import { IsClient } from "../../utilities";
+import { IsClient, logAssert } from "../../utilities";
 import { SharedComponent } from "../shared-component";
 
 /** @internal */
@@ -83,7 +83,7 @@ export class SharedRemoteAction<A extends unknown[], R> implements ISharedNetwor
 	 * - The component is not connected
 	 */
 	public async Invoke(...args: A) {
-		assert(IsClient, "Function can't be invoked on server");
+		logAssert(IsClient, "Function can't be invoked on server");
 
 		if (!this.componentReferense.GetIsConnected()) {
 			throw `Component with id ${this.componentReferense.GenerateInfo().ServerId} not connected`;
@@ -95,11 +95,11 @@ export class SharedRemoteAction<A extends unknown[], R> implements ISharedNetwor
 			args,
 		);
 
-		assert(
+		logAssert(
 			result !== PLAYER_NOT_CONNECTED,
 			`Component with id ${this.componentReferense.GenerateInfo().ServerId} not connected`,
 		);
-		assert(result !== ACTION_GUARD_FAILED, "Guard failed");
+		logAssert(result !== ACTION_GUARD_FAILED, "Guard failed");
 
 		return result as R;
 	}

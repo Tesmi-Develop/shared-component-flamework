@@ -8,7 +8,7 @@ import { client, ClientSyncer, server, ServerSyncer, SyncPatch, SyncPayload } fr
 import { HttpService, Players, ReplicatedStorage, RunService } from "@rbxts/services";
 import { remotes } from "../remotes";
 import { PlayerAction, SharedComponentInfo } from "../types";
-import { GetConstructorIdentifier, GetInheritanceTree } from "../utilities";
+import { GetConstructorIdentifier, GetInheritanceTree, logAssert } from "../utilities";
 import { ISharedNetwork } from "./network";
 import { Pointer } from "./pointer";
 
@@ -16,17 +16,17 @@ const IsServer = RunService.IsServer();
 const IsClient = RunService.IsClient();
 const event = ReplicatedStorage.FindFirstChild("REFLEX_DEVTOOLS") as RemoteEvent;
 
-export const OnAddedSharedComponents = new Signal<[id: string, instance: Instance]>();
-export const ClientSharedComponents = new Map<string, Instance>(); // ID -> Instance
+export const OnAddedInstanceWithId = new Signal<[id: string, instance: Instance]>();
+export const InstancesWithId = new Map<string, Instance>(); // ID -> Instance
 
-export const WaitForClientSharedComponent = async (id: string) => {
-	if (ClientSharedComponents.has(id)) {
-		return ClientSharedComponents.get(id)!;
+export const WaitForInstanceWithId = async (id: string) => {
+	if (InstancesWithId.has(id)) {
+		return InstancesWithId.get(id)!;
 	}
 
 	const thread = coroutine.running();
 
-	const connection = OnAddedSharedComponents.Connect((newId, instance) => {
+	const connection = OnAddedInstanceWithId.Connect((newId, instance) => {
 		if (id !== newId) return;
 		coroutine.resume(thread, instance);
 		connection.Disconnect();
@@ -36,8 +36,12 @@ export const WaitForClientSharedComponent = async (id: string) => {
 };
 
 const addSharedComponent = (id: string, instance: Instance) => {
-	OnAddedSharedComponents.Fire(id, instance);
-	ClientSharedComponents.set(id, instance);
+	OnAddedInstanceWithId.Fire(id, instance);
+	InstancesWithId.set(id, instance);
+};
+
+export const removeSharedComponent = (id: string) => {
+	InstancesWithId.delete(id);
 };
 
 export
@@ -151,15 +155,16 @@ abstract class SharedComponent<S = any, A extends object = {}, I extends Instanc
 	 * @return {SharedComponentInfo} The information about the shared component.
 	 */
 	public GenerateInfo(): SharedComponentInfo {
+		const id = this.instance.GetAttribute("__SERVER_ID") as string;
 		const info = this.info ?? {
-			ServerId: this.attributes.__SERVER_ID ?? "",
+			ServerId: id ?? "",
 			Identifier: GetConstructorIdentifier(this.getConstructor()),
 			SharedIdentifier: GetConstructorIdentifier(this.tree[this.tree.size() - 1]),
 			PointerID: this.pointer ? Pointer.GetPointerID(this.pointer) : undefined,
 		};
 
-		if (info.ServerId !== this.attributes.__SERVER_ID) {
-			info.ServerId = this.attributes.__SERVER_ID ?? "";
+		if (info.ServerId !== id) {
+			info.ServerId = id ?? "";
 		}
 
 		this.info = info;
@@ -285,13 +290,13 @@ abstract class SharedComponent<S = any, A extends object = {}, I extends Instanc
 
 	/** @client */
 	public AttachDevTool() {
-		assert(IsClient, "Must be a client");
+		logAssert(IsClient, "Must be a client");
 		this.isEnableDevTool = true;
 	}
 
 	/** @client */
 	public DisableDevTool() {
-		assert(IsClient, "Must be a client");
+		logAssert(IsClient, "Must be a client");
 		this.isEnableDevTool = false;
 	}
 
@@ -396,7 +401,7 @@ abstract class SharedComponent<S = any, A extends object = {}, I extends Instanc
 
 	private _onStartServer() {
 		this.onAttributeChanged("__SERVER_ID", (id, oldValue) => {
-			if (oldValue) ClientSharedComponents.delete(oldValue);
+			if (oldValue) InstancesWithId.delete(oldValue);
 			if (id) addSharedComponent(id, this.instance);
 		});
 
@@ -458,7 +463,7 @@ abstract class SharedComponent<S = any, A extends object = {}, I extends Instanc
 
 		let oldValueId = id as string | undefined;
 		this.attributeConnection = this.instance.GetAttributeChangedSignal("__SERVER_ID").Connect(() => {
-			if (oldValueId !== undefined) ClientSharedComponents.delete(oldValueId);
+			if (oldValueId !== undefined) InstancesWithId.delete(oldValueId);
 
 			const id = this.instance.GetAttribute("__SERVER_ID") as string;
 			if (id !== undefined) addSharedComponent(id, this.instance);

@@ -4,6 +4,7 @@ import { SharedRemoteEventServerToClient, SharedRemoteEventClientToServer } from
 import { SharedComponent } from "../shared-component";
 import { t } from "@rbxts/t";
 import { ISharedRemoteAction, SharedRemoteAction } from "./action";
+import { logAssert } from "../../utilities";
 
 export interface ServerToClient {
 	readonly __brand: unique symbol;
@@ -41,8 +42,8 @@ export namespace SharedComponentNetwork {
 		validator?: Modding.Generic<A, "guard">,
 	) => {
 		type R = Mode extends ServerToClient ? SharedRemoteEventServerToClient<A> : SharedRemoteEventClientToServer<A>;
-		assert(validator, "Guard must be provided");
-		assert(mode, "Mode must be provided");
+		logAssert(validator, "Guard must be provided");
+		logAssert(mode, "Mode must be provided");
 
 		return (
 			mode === "ServerToClient"
@@ -53,7 +54,7 @@ export namespace SharedComponentNetwork {
 
 	/** @metadata macro */
 	export const action = <A extends unknown[], R>(validator?: Modding.Generic<A, "guard">) => {
-		assert(validator, "Guard must be provided");
+		logAssert(validator, "Guard must be provided");
 
 		return new SharedRemoteAction<A, R>(validator) as ISharedRemoteAction<A, R>;
 	};

@@ -2,24 +2,9 @@ import { Reflect } from "@flamework/core";
 import { AbstractConstructor, Constructor } from "@flamework/core/out/utility";
 import { RunService } from "@rbxts/services";
 
-type GeneratorIdReturning<T extends boolean> = T extends true ? string : number;
-
 interface ConstructorWithIndex extends Constructor {
 	__index: object;
 }
-
-export const CreateGeneratorId = <C extends boolean>(isString = false as C) => {
-	const instance = {
-		freeId: 0,
-		Next: (): GeneratorIdReturning<C> => {
-			const id = instance.freeId;
-			instance.freeId += 1;
-			return (isString ? `${id}` : id) as GeneratorIdReturning<C>;
-		},
-	};
-
-	return instance as { Next: () => GeneratorIdReturning<C> };
-};
 
 export const consolePrefix = `SharedComponets`;
 const errorString = `--// [${consolePrefix}]: Caught an error in your code //--`;
@@ -52,24 +37,6 @@ export function GetParentConstructor(ctor: AbstractConstructor) {
 	}
 }
 
-export const ForeachDeepTable = (
-	tbl: object,
-	callback: (value: unknown, key: unknown) => void,
-	predicate?: (value: object) => boolean,
-) => {
-	for (const [key, value] of pairs(tbl)) {
-		if (typeIs(value, "table")) {
-			if (predicate && predicate(value)) {
-				callback(key, value);
-				continue;
-			}
-			ForeachDeepTable(value, callback);
-			continue;
-		}
-		callback(key, value);
-	}
-};
-
 export function GetInheritanceTree<T>(constructor: Constructor, parent: Constructor) {
 	let currentClass = constructor as ConstructorWithIndex;
 	let metatable = getmetatable(currentClass) as ConstructorWithIndex;
@@ -83,26 +50,3 @@ export function GetInheritanceTree<T>(constructor: Constructor, parent: Construc
 
 	return tree;
 }
-
-export function DeepCloneTable<V>(value: ReadonlyArray<V>): Array<V>;
-export function DeepCloneTable<V>(value: ReadonlySet<V>): Set<V>;
-export function DeepCloneTable<K, V>(value: ReadonlyMap<K, V>): Map<K, V>;
-export function DeepCloneTable<T extends object>(value: T): T;
-export function DeepCloneTable<T extends object>(obj: T): T {
-	const result = {};
-
-	for (const [key, value] of pairs(obj)) {
-		result[key as never] = typeIs(value, "table") ? (DeepCloneTable(value as never) as never) : (value as never);
-	}
-
-	return result as T;
-}
-
-export type DeepReadonly<T> =
-	T extends Map<infer K, infer V>
-		? ReadonlyMap<K, V>
-		: T extends Set<infer R>
-			? ReadonlySet<R>
-			: T extends object
-				? { readonly [K in keyof T]: DeepReadonly<T[K]> }
-				: T;

@@ -5,7 +5,14 @@ import { SyncPayload } from "@rbxts/charm-sync";
 import { Players } from "@rbxts/services";
 import { remotes } from "../remotes";
 import { PlayerAction, SharedComponentInfo } from "../types";
-import { GetConstructorIdentifier, GetParentConstructor, IsClient, IsServer, logWarning } from "../utilities";
+import {
+	GetConstructorIdentifier,
+	GetParentConstructor,
+	IsClient,
+	IsServer,
+	logAssert,
+	logWarning,
+} from "../utilities";
 import { ACTION_GUARD_FAILED, PLAYER_NOT_CONNECTED, SharedRemoteAction } from "./network/action";
 import {
 	IsSharedComponentRemoteEvent,
@@ -13,7 +20,12 @@ import {
 	SharedRemoteEventServerToClient,
 } from "./network/event";
 import { Pointer } from "./pointer";
-import { SharedComponent, WaitForClientSharedComponent } from "./shared-component";
+import {
+	OnAddedInstanceWithId,
+	removeSharedComponent,
+	SharedComponent,
+	WaitForInstanceWithId,
+} from "./shared-component";
 
 @Service({
 	loadOrder: 0,
@@ -34,6 +46,12 @@ export class SharedComponentHandler implements OnInit {
 		componentConfigs.forEach(({ constructor }) => {
 			if (!constructor) return;
 			this.polymorphicIds.set(constructor, this.getPolymorphicIds(constructor));
+		});
+
+		OnAddedInstanceWithId.Connect((id, instance) => {
+			instance.Destroying.Connect(() => {
+				removeSharedComponent(id);
+			});
 		});
 
 		IsClient && this.onClientSetup();
@@ -98,8 +116,8 @@ export class SharedComponentHandler implements OnInit {
 		instance: Instance,
 		componentSpecifier?: ConstructorRef<T>,
 	) {
-		assert(IsServer, "AddSharedComponent can't be called on server");
-		assert(componentSpecifier, "Missing component specifier");
+		logAssert(IsServer, "AddSharedComponent can't be called on server");
+		logAssert(componentSpecifier, "Missing component specifier");
 
 		const players = player === "All" ? Players.GetPlayers() : typeIs(player, "Instance") ? [player] : player;
 		const component = this.components.addComponent(instance, componentSpecifier);
@@ -112,7 +130,7 @@ export class SharedComponentHandler implements OnInit {
 
 	/** @server */
 	public InvokeClientAddComponent(player: Player | Player[] | "All", component: SharedComponent) {
-		assert(IsServer, "InvokeClientAddComponent can't be called on server");
+		logAssert(IsServer, "InvokeClientAddComponent can't be called on server");
 
 		const players = player === "All" ? Players.GetPlayers() : typeIs(player, "Instance") ? [player] : player;
 		const sharedInfo = component.GenerateInfo();
@@ -122,7 +140,7 @@ export class SharedComponentHandler implements OnInit {
 
 	/** @server */
 	public InvokeClientRemoveComponent(player: Player | Player[] | "All", component: SharedComponent) {
-		assert(IsServer, "InvokeClientAddComponent can't be called on server");
+		logAssert(IsServer, "InvokeClientAddComponent can't be called on server");
 
 		const players = player === "All" ? Players.GetPlayers() : typeIs(player, "Instance") ? [player] : player;
 		const sharedInfo = component.GenerateInfo();
@@ -140,8 +158,8 @@ export class SharedComponentHandler implements OnInit {
 		removeFromServer: boolean = true,
 		componentSpecifier?: ConstructorRef<T>,
 	) {
-		assert(IsServer, "AddSharedComponent can't be called on server");
-		assert(componentSpecifier, "Missing component specifier");
+		logAssert(IsServer, "AddSharedComponent can't be called on server");
+		logAssert(componentSpecifier, "Missing component specifier");
 
 		const players = player === "All" ? Players.GetPlayers() : typeIs(player, "Instance") ? [player] : player;
 		const component = this.components.getComponent(instance, componentSpecifier);
@@ -175,14 +193,19 @@ export class SharedComponentHandler implements OnInit {
 	private async resolveComponent({ ServerId, Identifier, SharedIdentifier, PointerID }: SharedComponentInfo) {
 		if (!Modding.getObjectFromId(SharedIdentifier)) {
 			logWarning(
-				`Attempt to allow dispatching, but shared component does not exist\n SharedIdentifier: ${SharedIdentifier}`,
+				`Attempt to get component, but shared component does not exist\n SharedIdentifier: ${SharedIdentifier}`,
 			);
 			return;
 		}
 
-		const [success, instance] = WaitForClientSharedComponent(ServerId).timeout(15).await();
+		if (ServerId === "") {
+			logWarning(`Attempt to get component with missing serverID\n Identifier: ${Identifier}`);
+			return;
+		}
+
+		const [success, instance] = WaitForInstanceWithId(ServerId).timeout(15).await();
 		if (!success) {
-			logWarning(`Attempt to dispatch component with missing serverID\n ServerId: ${ServerId}`);
+			logWarning(`Attempt to get component with missing serverID\n ServerId: ${ServerId}`);
 			return;
 		}
 
@@ -191,7 +214,7 @@ export class SharedComponentHandler implements OnInit {
 			const pointer = Pointer.GetPointer(PointerID);
 
 			if (!pointer) {
-				logWarning(`Attempt to dispatch component with missing pointer\n PointerID: ${PointerID}`);
+				logWarning(`Attempt to get component with missing pointer\n PointerID: ${PointerID}`);
 				return;
 			}
 
@@ -219,7 +242,7 @@ export class SharedComponentHandler implements OnInit {
 
 		if (sharedComponent.size() > 1) {
 			logWarning(
-				`Attempt to allow dispatching when an instance has multiple sharedComponent\n 
+				`Attempt to get component when an instance has multiple sharedComponent\n 
 				Instance: ${instance}\n 
 				SharedIdentifier: ${SharedIdentifier}\n 
 				ServerIdentifier: ${Identifier}\n 
@@ -257,7 +280,7 @@ export class SharedComponentHandler implements OnInit {
 					: this.getSharedComponentChild(info.SharedIdentifier);
 			if (!componetID) return;
 
-			const [success, instance] = WaitForClientSharedComponent(info.ServerId).timeout(15).await();
+			const [success, instance] = WaitForInstanceWithId(info.ServerId).timeout(15).await();
 			if (!success) {
 				logWarning("Attempt to dispatch component with missing serverID\n ServerId: " + info.ServerId);
 				return;
