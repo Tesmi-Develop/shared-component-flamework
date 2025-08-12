@@ -90,7 +90,7 @@ export class SharedRemoteAction<A extends unknown[], R> implements ISharedNetwor
 		}
 
 		const result = await remotes._shared_component_remote_function_Server(
-			this.componentReferense.GenerateInfo(),
+			this.componentReferense.GetID(),
 			this.name,
 			args,
 		);

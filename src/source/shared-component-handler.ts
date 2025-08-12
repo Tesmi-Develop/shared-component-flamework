@@ -98,20 +98,23 @@ export class SharedComponentHandler implements OnInit {
 
 		const { InstanceId: ServerId, Identifier, SharedIdentifier, PointerID } = info;
 		if (!Modding.getObjectFromId(SharedIdentifier)) {
-			if (callWarning) logWarning(
-				`Attempt to get component, but shared component does not exist\n Info: ${this.printInfo(info)}`,
-			);
+			if (callWarning)
+				logWarning(
+					`Attempt to get component, but shared component does not exist\n Info: ${this.printInfo(info)}`,
+				);
 			return;
 		}
 
 		if (ServerId === "") {
-			if (callWarning) logWarning(`Attempt to get component with missing serverID\n Info: ${this.printInfo(info)}`);
+			if (callWarning)
+				logWarning(`Attempt to get component with missing serverID\n Info: ${this.printInfo(info)}`);
 			return;
 		}
 
 		const instance = GetInstanceWithId(ServerId);
 		if (!instance) {
-			if (callWarning) logWarning(`Attempt to get component with missing serverID\n Info: ${this.printInfo(info)}`);
+			if (callWarning)
+				logWarning(`Attempt to get component with missing serverID\n Info: ${this.printInfo(info)}`);
 			return;
 		}
 
@@ -120,7 +123,8 @@ export class SharedComponentHandler implements OnInit {
 			const pointer = Pointer.GetPointer(PointerID);
 
 			if (!pointer) {
-				if (callWarning) logWarning(`Attempt to get component with missing pointer\n Info: ${this.printInfo(info)}`);
+				if (callWarning)
+					logWarning(`Attempt to get component with missing pointer\n Info: ${this.printInfo(info)}`);
 				return;
 			}
 
@@ -147,12 +151,13 @@ export class SharedComponentHandler implements OnInit {
 		const sharedComponent = this.components.getComponents<SharedComponent>(instance, SharedIdentifier);
 
 		if (sharedComponent.size() > 1) {
-			if (callWarning) logWarning(
-				`Attempt to get component when an instance has multiple sharedComponent\n 
+			if (callWarning)
+				logWarning(
+					`Attempt to get component when an instance has multiple sharedComponent\n 
 				Instance: ${instance}\n 
 				FoundComponents: ${sharedComponent.map((s) => GetConstructorIdentifier(getmetatable(s) as never)).join(", ")}\n
 				Info: ${this.printInfo(info)}`,
-			);
+				);
 			return;
 		}
 
@@ -161,12 +166,12 @@ export class SharedComponentHandler implements OnInit {
 
 	private onClientSetup() {
 		remotes._shared_component_dispatch.connect(async (actions, componentInfo) => {
-			const component = this.resolveComponent(componentInfo);
+			const component = await this.waitFoComponent(componentInfo);
 			if (component !== undefined) this.invokeDispatch(component, actions);
 		});
 
 		remotes._shared_component_remote_event_Client.connect(async (componentInfo, eventName, args) => {
-			const component = this.resolveComponent(componentInfo);
+			const component = await this.waitFoComponent(componentInfo);
 			if (!component) return;
 
 			const remote = component.__GetRemote(eventName);
@@ -178,11 +183,24 @@ export class SharedComponentHandler implements OnInit {
 		});
 
 		remotes._shared_component_disconnected.connect(async (componentInfo) => {
-			const component = this.resolveComponent(componentInfo);
+			const component = await this.waitFoComponent(componentInfo);
 			if (!component) return;
 
 			component.__Disconnected();
 		});
+	}
+
+	private async waitFoComponent(id: string) {
+		if (SharedComponent.instances.has(id)) return SharedComponent.instances.get(id)!;
+
+		const thread = coroutine.running();
+
+		SharedComponent.onAddedInstances.Connect((component, newId) => {
+			if (id !== newId) return;
+			coroutine.resume(thread, component);
+		});
+
+		return coroutine.yield() as never as SharedComponent;
 	}
 
 	private onServerSetup() {

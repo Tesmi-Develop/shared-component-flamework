@@ -2,6 +2,7 @@
 import { BaseComponent, Component } from "@flamework/components";
 import { OnStart } from "@flamework/core";
 import { Constructor } from "@flamework/core/out/utility";
+import { Signal } from "@rbxts/beacon";
 import Charm, { atom, Atom, subscribe } from "@rbxts/charm";
 import { SyncPatch, SyncPayload } from "@rbxts/charm-sync";
 import { Players, ReplicatedStorage, RunService } from "@rbxts/services";
@@ -39,7 +40,8 @@ abstract class SharedComponent<S = any, A extends object = {}, I extends Instanc
 	extends BaseComponent<A & { __SERVER_ID?: string }, I>
 	implements OnStart
 {
-	public static instances: Map<string, SharedComponent> = new Map<string, SharedComponent>(); // ID -> SharedComponent
+	public static readonly instances: Map<string, SharedComponent> = new Map<string, SharedComponent>(); // ID -> SharedComponent
+	public static readonly onAddedInstances = new Signal<[SharedComponent, string]>();
 
 	protected pointer?: Pointer;
 	protected abstract state: S;
@@ -82,7 +84,10 @@ abstract class SharedComponent<S = any, A extends object = {}, I extends Instanc
 		}) as Atom<S>;
 
 		this.initSharedActions();
-		this.sharedComponentCtor = GetSharedComponentCtor(this.getConstructor(), SharedComponent as unknown as Constructor);
+		this.sharedComponentCtor = GetSharedComponentCtor(
+			this.getConstructor(),
+			SharedComponent as unknown as Constructor,
+		);
 	}
 
 	public onStart(): void {}
@@ -435,7 +440,7 @@ abstract class SharedComponent<S = any, A extends object = {}, I extends Instanc
 		const data = this.ResolveSyncForPlayer(player, payload.data as Record<string, unknown> as never);
 		(payload.data as Record<string, unknown>) = data as never;
 
-		remotes._shared_component_dispatch.fire(player, payload, this.uniqueId ?? this.GenerateInfo());
+		remotes._shared_component_dispatch.fire(player, payload, this.uniqueId);
 	}
 
 	private initSharedActions() {
@@ -479,6 +484,7 @@ abstract class SharedComponent<S = any, A extends object = {}, I extends Instanc
 
 		this.uniqueId = GenerateID();
 		SharedComponent.instances.set(this.uniqueId, this);
+		SharedComponent.onAddedInstances.Fire(this, this.uniqueId);
 		this.initInstanceID();
 
 		this.playerRemovingConnection = Players.PlayerRemoving.Connect((player) => {
@@ -499,6 +505,7 @@ abstract class SharedComponent<S = any, A extends object = {}, I extends Instanc
 		this.isConnected = true;
 		this.uniqueId = id;
 		SharedComponent.instances.set(this.uniqueId, this);
+		SharedComponent.onAddedInstances.Fire(this, this.uniqueId);
 		this.OnConnected();
 
 		return true;
@@ -509,7 +516,7 @@ abstract class SharedComponent<S = any, A extends object = {}, I extends Instanc
 		if (this.isDestroyed) return;
 		if (!this.isConnected) return;
 
-		await remotes._shared_component_connection(this.uniqueId ?? this.GenerateInfo(), PlayerAction.Disconnect);
+		await remotes._shared_component_connection(this.uniqueId, PlayerAction.Disconnect);
 		if (!this.isConnected) return;
 
 		this.isConnected = false;
@@ -557,10 +564,11 @@ abstract class SharedComponent<S = any, A extends object = {}, I extends Instanc
 		this.scheduledSyncConnection?.Disconnect();
 		this.listeners.forEach((unsubscribe) => unsubscribe());
 		this.connectedPlayers.clear();
-		if (this.uniqueId !== "") task.defer(() => {
-			if (SharedComponent.instances.get(this.uniqueId) !== this) return;
-			SharedComponent.instances.delete(this.uniqueId);
-		});
+		if (this.uniqueId !== "")
+			task.defer(() => {
+				if (SharedComponent.instances.get(this.uniqueId) !== this) return;
+				SharedComponent.instances.delete(this.uniqueId);
+			});
 
 		for (const [_, remote] of pairs(this.remotes)) {
 			remote.Destroy();

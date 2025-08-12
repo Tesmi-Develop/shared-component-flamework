@@ -39,7 +39,7 @@ export class SharedRemoteEventServerToClient<A extends unknown[]> implements ISh
 		players.forEach((player) => {
 			remotes._shared_component_remote_event_Client.fire(
 				player,
-				this.componentReferense.GenerateInfo(),
+				this.componentReferense.GetID(),
 				this.name,
 				args,
 			);
@@ -181,7 +181,7 @@ export class SharedRemoteEventClientToServer<A extends unknown[]> implements ISh
 			return;
 		}
 
-		remotes._shared_component_remote_event_Server.fire(this.componentReferense.GenerateInfo(), this.name, args);
+		remotes._shared_component_remote_event_Server.fire(this.componentReferense.GetID(), this.name, args);
 	}
 
 	/** @server */
