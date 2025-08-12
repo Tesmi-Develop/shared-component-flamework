@@ -177,7 +177,7 @@ export class SharedRemoteEventClientToServer<A extends unknown[]> implements ISh
 		logAssert(IsClient, "Event can't be fired on server");
 
 		if (!this.componentReferense.GetIsConnected()) {
-			logWarning(`Component with id ${this.componentReferense.GenerateInfo().ServerId} not connected`);
+			logWarning(`Component with id ${this.componentReferense.GenerateInfo().InstanceId} not connected`);
 			return;
 		}
 

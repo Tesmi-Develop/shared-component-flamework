@@ -1,5 +1,5 @@
 import { Component } from "@flamework/components";
-import { SharedComponent } from "@rbxts/shared-components-flamework";
+import { MarkHowSharedComponent, SharedComponent } from "@rbxts/shared-components-flamework";
 import { ClientToServer, ServerToClient, SharedComponentNetwork } from "../../source/network";
 
 interface State {
@@ -7,7 +7,7 @@ interface State {
 }
 
 @Component()
-export class ValueStorageComponent extends SharedComponent<State> {
+export class ValueStorageComponentAbstract extends SharedComponent<State> {
 	protected state = {
 		value: 0,
 	};
@@ -17,3 +17,7 @@ export class ValueStorageComponent extends SharedComponent<State> {
 		pong: SharedComponentNetwork.event<ClientToServer, [value: number]>(),
 	};
 }
+
+@MarkHowSharedComponent()
+@Component()
+export class ValueStorageComponent extends ValueStorageComponentAbstract {}

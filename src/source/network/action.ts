@@ -86,7 +86,7 @@ export class SharedRemoteAction<A extends unknown[], R> implements ISharedNetwor
 		logAssert(IsClient, "Function can't be invoked on server");
 
 		if (!this.componentReferense.GetIsConnected()) {
-			throw `Component with id ${this.componentReferense.GenerateInfo().ServerId} not connected`;
+			throw `Component with id ${this.componentReferense.GenerateInfo().InstanceId} not connected`;
 		}
 
 		const result = await remotes._shared_component_remote_function_Server(
@@ -97,7 +97,7 @@ export class SharedRemoteAction<A extends unknown[], R> implements ISharedNetwor
 
 		logAssert(
 			result !== PLAYER_NOT_CONNECTED,
-			`Component with id ${this.componentReferense.GenerateInfo().ServerId} not connected`,
+			`Component with id ${this.componentReferense.GenerateInfo().InstanceId} not connected`,
 		);
 		logAssert(result !== ACTION_GUARD_FAILED, "Guard failed");
 

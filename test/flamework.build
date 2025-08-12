@@ -34,7 +34,9 @@
 		"@rbxts/shared-components-flamework:out/test/src/server/components/ValueStorageComponent copy@ServerValueStorageComponent": "$s:test/src/server/components/ValueStorageComponent copy@ServerValueStorageComponent",
 		"@rbxts/shared-components-flamework:out/test/src/server/components/ValueStorageComponent-1@ServerValueStorageComponent": "$s:test/src/server/components/ValueStorageComponent-1@ServerValueStorageComponent",
 		"@rbxts/shared-components-flamework:out/test/src/client/components/ValueStorageComponent copy@ClientValueStorageComponent": "$s:test/src/client/components/ValueStorageComponent copy@ClientValueStorageComponent",
-		"@rbxts/shared-components-flamework:out/test/src/client/components/ValueStorageComponent-1@ClientValueStorageComponent": "$s:test/src/client/components/ValueStorageComponent-1@ClientValueStorageComponent"
+		"@rbxts/shared-components-flamework:out/test/src/client/components/ValueStorageComponent-1@ClientValueStorageComponent": "$s:test/src/client/components/ValueStorageComponent-1@ClientValueStorageComponent",
+		"@rbxts/shared-components-flamework:out/test/src/shared/components/valueStorageComponent@ValueStorageComponentAbstract": "$s:test/src/shared/components/valueStorageComponent@ValueStorageComponentAbstract",
+		"@rbxts/shared-components-flamework:out/src/source/decorators/mark-shared-component@MarkHowSharedComponent": "$s:src/source/decorators/mark-shared-component@MarkHowSharedComponent"
 	},
 	"metadata": {},
 	"identifierPrefix": "$s",
@@ -186,6 +188,16 @@
 		{
 			"filePath": "out\\test\\src\\client\\components\\ValueStorageComponent-1.lua",
 			"internalId": "$s:test/src/client/components/ValueStorageComponent-1@ClientValueStorageComponent",
+			"decorators": [
+				{
+					"internalId": "$c:components@Component",
+					"name": "Component"
+				}
+			]
+		},
+		{
+			"filePath": "out\\test\\src\\shared\\components\\valueStorageComponent.lua",
+			"internalId": "$s:test/src/shared/components/valueStorageComponent@ValueStorageComponentAbstract",
 			"decorators": [
 				{
 					"internalId": "$c:components@Component",

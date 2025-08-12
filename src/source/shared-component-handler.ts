@@ -1,18 +1,10 @@
 import { BaseComponent, Component, Components } from "@flamework/components";
-import { AbstractConstructor, ConstructorRef } from "@flamework/components/out/utility";
+import { AbstractConstructor } from "@flamework/components/out/utility";
 import { Controller, Modding, OnInit, Reflect, Service } from "@flamework/core";
 import { SyncPayload } from "@rbxts/charm-sync";
-import { Players } from "@rbxts/services";
 import { remotes } from "../remotes";
 import { PlayerAction, SharedComponentInfo } from "../types";
-import {
-	GetConstructorIdentifier,
-	GetParentConstructor,
-	IsClient,
-	IsServer,
-	logAssert,
-	logWarning,
-} from "../utilities";
+import { GetConstructorIdentifier, GetParentConstructor, IsClient, IsServer, logWarning } from "../utilities";
 import { ACTION_GUARD_FAILED, PLAYER_NOT_CONNECTED, SharedRemoteAction } from "./network/action";
 import {
 	IsSharedComponentRemoteEvent,
@@ -20,12 +12,7 @@ import {
 	SharedRemoteEventServerToClient,
 } from "./network/event";
 import { Pointer } from "./pointer";
-import {
-	OnAddedInstanceWithId,
-	removeSharedComponent,
-	SharedComponent,
-	WaitForInstanceWithId,
-} from "./shared-component";
+import { GetInstanceWithId, SharedComponent } from "./shared-component";
 
 @Service({
 	loadOrder: 0,
@@ -48,27 +35,8 @@ export class SharedComponentHandler implements OnInit {
 			this.polymorphicIds.set(constructor, this.getPolymorphicIds(constructor));
 		});
 
-		OnAddedInstanceWithId.Connect((id, instance) => {
-			instance.Destroying.Connect(() => {
-				removeSharedComponent(id);
-			});
-		});
-
 		IsClient && this.onClientSetup();
 		IsServer && this.onServerSetup();
-	}
-
-	private getSharedComponentChild(componentSpecifier: string) {
-		let found: string | undefined;
-
-		this.polymorphicIds.forEach((ids, component) => {
-			const index = ids.indexOf(componentSpecifier);
-			if (index === 0 || index === -1) return;
-
-			found = ids[0];
-		});
-
-		return found;
 	}
 
 	private getOrderedParents(ctor: AbstractConstructor, omitBaseComponent = true) {
@@ -107,105 +75,43 @@ export class SharedComponentHandler implements OnInit {
 		return ids;
 	}
 
-	/**
-	 * @metadata macro
-	 * @server
-	 * */
-	public AddSharedComponent<T extends SharedComponent>(
-		player: Player | Player[] | "All",
-		instance: Instance,
-		componentSpecifier?: ConstructorRef<T>,
-	) {
-		logAssert(IsServer, "AddSharedComponent can't be called on server");
-		logAssert(componentSpecifier, "Missing component specifier");
-
-		const players = player === "All" ? Players.GetPlayers() : typeIs(player, "Instance") ? [player] : player;
-		const component = this.components.addComponent(instance, componentSpecifier);
-		const sharedInfo = component.GenerateInfo();
-
-		players.forEach((player) => remotes._shared_component_component_interaction.fire(player, sharedInfo, "Add"));
-
-		return component;
+	private invokeDispatch(component: SharedComponent, payload: SyncPayload<{}>) {
+		component.__DispatchFromServer(payload);
 	}
 
-	/** @server */
-	public InvokeClientAddComponent(player: Player | Player[] | "All", component: SharedComponent) {
-		logAssert(IsServer, "InvokeClientAddComponent can't be called on server");
-
-		const players = player === "All" ? Players.GetPlayers() : typeIs(player, "Instance") ? [player] : player;
-		const sharedInfo = component.GenerateInfo();
-
-		players.forEach((player) => remotes._shared_component_component_interaction.fire(player, sharedInfo, "Add"));
+	private printInfo(info: SharedComponentInfo) {
+		const { InstanceId: ServerId, Identifier, SharedIdentifier, PointerID } = info;
+		return `ServerId: ${ServerId}\n Identifier: ${Identifier}\n SharedIdentifier: ${SharedIdentifier}\n PointerID: ${PointerID}`;
 	}
 
-	/** @server */
-	public InvokeClientRemoveComponent(player: Player | Player[] | "All", component: SharedComponent) {
-		logAssert(IsServer, "InvokeClientAddComponent can't be called on server");
+	private resolveComponent(info: SharedComponentInfo | string, callWarning = true) {
+		if (typeIs(info, "string")) {
+			const component = SharedComponent.instances.get(info);
 
-		const players = player === "All" ? Players.GetPlayers() : typeIs(player, "Instance") ? [player] : player;
-		const sharedInfo = component.GenerateInfo();
+			if (!component) {
+				if (callWarning) logWarning(`Attempt to get component, but component does not exist\n ID: ${info}`);
+				return;
+			}
 
-		players.forEach((player) => remotes._shared_component_component_interaction.fire(player, sharedInfo, "Remove"));
-	}
-
-	/**
-	 * @metadata macro
-	 * @server
-	 * */
-	public RemoveSharedComponent<T extends SharedComponent>(
-		player: Player | Player[] | "All",
-		instance: Instance,
-		removeFromServer: boolean = true,
-		componentSpecifier?: ConstructorRef<T>,
-	) {
-		logAssert(IsServer, "AddSharedComponent can't be called on server");
-		logAssert(componentSpecifier, "Missing component specifier");
-
-		const players = player === "All" ? Players.GetPlayers() : typeIs(player, "Instance") ? [player] : player;
-		const component = this.components.getComponent(instance, componentSpecifier);
-		if (!component) return;
-
-		const sharedInfo = component.GenerateInfo();
-		removeFromServer && this.components.removeComponent(instance, componentSpecifier);
-
-		players.forEach((player) => remotes._shared_component_component_interaction.fire(player, sharedInfo, "Remove"));
-	}
-
-	private invokeDispatch(component: SharedComponent, actions: SyncPayload<{}>) {
-		component.__DispatchFromServer(actions);
-	}
-
-	private getComponentFromPointer(PointerID: string) {
-		const pointer = Pointer.GetPointer(PointerID);
-
-		if (!pointer) {
-			logWarning(`Attempt to dispatch component with missing pointer\n PointerID: ${PointerID}`);
-			return;
+			return component;
 		}
 
-		try {
-			return pointer.GetComponentMetadata();
-		} catch (error) {
-			logWarning(`${error}\n PointerID: ${PointerID}`);
-		}
-	}
-
-	private async resolveComponent({ ServerId, Identifier, SharedIdentifier, PointerID }: SharedComponentInfo) {
+		const { InstanceId: ServerId, Identifier, SharedIdentifier, PointerID } = info;
 		if (!Modding.getObjectFromId(SharedIdentifier)) {
-			logWarning(
-				`Attempt to get component, but shared component does not exist\n SharedIdentifier: ${SharedIdentifier}`,
+			if (callWarning) logWarning(
+				`Attempt to get component, but shared component does not exist\n Info: ${this.printInfo(info)}`,
 			);
 			return;
 		}
 
 		if (ServerId === "") {
-			logWarning(`Attempt to get component with missing serverID\n Identifier: ${Identifier}`);
+			if (callWarning) logWarning(`Attempt to get component with missing serverID\n Info: ${this.printInfo(info)}`);
 			return;
 		}
 
-		const [success, instance] = WaitForInstanceWithId(ServerId).timeout(15).await();
-		if (!success) {
-			logWarning(`Attempt to get component with missing serverID\n ServerId: ${ServerId}`);
+		const instance = GetInstanceWithId(ServerId);
+		if (!instance) {
+			if (callWarning) logWarning(`Attempt to get component with missing serverID\n Info: ${this.printInfo(info)}`);
 			return;
 		}
 
@@ -214,7 +120,7 @@ export class SharedComponentHandler implements OnInit {
 			const pointer = Pointer.GetPointer(PointerID);
 
 			if (!pointer) {
-				logWarning(`Attempt to get component with missing pointer\n PointerID: ${PointerID}`);
+				if (callWarning) logWarning(`Attempt to get component with missing pointer\n Info: ${this.printInfo(info)}`);
 				return;
 			}
 
@@ -225,7 +131,7 @@ export class SharedComponentHandler implements OnInit {
 				);
 				if (component) return component;
 			} catch (error) {
-				logWarning(`${error}\n PointerID: ${PointerID}`);
+				if (callWarning) logWarning(`${error}\n PointerID: ${PointerID}`);
 			}
 
 			return;
@@ -241,12 +147,11 @@ export class SharedComponentHandler implements OnInit {
 		const sharedComponent = this.components.getComponents<SharedComponent>(instance, SharedIdentifier);
 
 		if (sharedComponent.size() > 1) {
-			logWarning(
+			if (callWarning) logWarning(
 				`Attempt to get component when an instance has multiple sharedComponent\n 
 				Instance: ${instance}\n 
-				SharedIdentifier: ${SharedIdentifier}\n 
-				ServerIdentifier: ${Identifier}\n 
-				FoundComponents: ${sharedComponent.map((s) => GetConstructorIdentifier(getmetatable(s) as never)).join(", ")}`,
+				FoundComponents: ${sharedComponent.map((s) => GetConstructorIdentifier(getmetatable(s) as never)).join(", ")}\n
+				Info: ${this.printInfo(info)}`,
 			);
 			return;
 		}
@@ -256,12 +161,12 @@ export class SharedComponentHandler implements OnInit {
 
 	private onClientSetup() {
 		remotes._shared_component_dispatch.connect(async (actions, componentInfo) => {
-			const component = await this.resolveComponent(componentInfo);
+			const component = this.resolveComponent(componentInfo);
 			if (component !== undefined) this.invokeDispatch(component, actions);
 		});
 
 		remotes._shared_component_remote_event_Client.connect(async (componentInfo, eventName, args) => {
-			const component = await this.resolveComponent(componentInfo);
+			const component = this.resolveComponent(componentInfo);
 			if (!component) return;
 
 			const remote = component.__GetRemote(eventName);
@@ -272,27 +177,8 @@ export class SharedComponentHandler implements OnInit {
 			remote.GetSignal().Fire(...(args as []));
 		});
 
-		remotes._shared_component_component_interaction.connect(async (info, action) => {
-			const componetID = info.PointerID
-				? this.getComponentFromPointer(info.PointerID)
-				: info.SharedIdentifier === info.Identifier
-					? info.SharedIdentifier
-					: this.getSharedComponentChild(info.SharedIdentifier);
-			if (!componetID) return;
-
-			const [success, instance] = WaitForInstanceWithId(info.ServerId).timeout(15).await();
-			if (!success) {
-				logWarning("Attempt to dispatch component with missing serverID\n ServerId: " + info.ServerId);
-				return;
-			}
-
-			action === "Add"
-				? this.components.addComponent(instance, componetID)
-				: this.components.removeComponent(instance, componetID);
-		});
-
 		remotes._shared_component_disconnected.connect(async (componentInfo) => {
-			const component = await this.resolveComponent(componentInfo);
+			const component = this.resolveComponent(componentInfo);
 			if (!component) return;
 
 			component.__Disconnected();
@@ -301,7 +187,7 @@ export class SharedComponentHandler implements OnInit {
 
 	private onServerSetup() {
 		remotes._shared_component_remote_event_Server.connect(async (player, componentInfo, eventName, args) => {
-			const component = await this.resolveComponent(componentInfo);
+			const component = this.resolveComponent(componentInfo);
 			if (!component) return;
 			if (!component.IsConnectedPlayer(player)) return;
 
@@ -314,7 +200,7 @@ export class SharedComponentHandler implements OnInit {
 		});
 
 		remotes._shared_component_remote_function_Server.onRequest(async (player, componentInfo, remoteName, args) => {
-			const component = await this.resolveComponent(componentInfo);
+			const component = this.resolveComponent(componentInfo);
 			if (!component) return;
 			if (!component.IsConnectedPlayer(player)) return PLAYER_NOT_CONNECTED;
 
@@ -327,21 +213,23 @@ export class SharedComponentHandler implements OnInit {
 		});
 
 		remotes._shared_component_connection.onRequest(async (player, componentInfo, action) => {
-			const component = await this.resolveComponent(componentInfo);
-			if (!component) return false;
+			const component = this.resolveComponent(componentInfo, action === PlayerAction.Connect);
+			if (!component) return [false, ""] as const;
 
 			if (action === PlayerAction.Connect) {
-				if (component.IsConnectedPlayer(player)) return false;
-				return component.__OnPlayerConnect(player);
+				if (component.IsConnectedPlayer(player)) return [false, ""] as const;
+
+				const success = component.__OnPlayerConnect(player);
+				return success ? [true, component.GetID()] : ([false, ""] as const);
 			}
 
 			if (action === PlayerAction.Disconnect) {
-				if (!component.IsConnectedPlayer(player)) return false;
+				if (!component.IsConnectedPlayer(player)) return [false, ""] as const;
 				component.__OnPlayerDisconnect(player);
-				return true;
+				return [true, ""] as const;
 			}
 
-			return false;
+			return [false, ""] as const;
 		});
 	}
 }

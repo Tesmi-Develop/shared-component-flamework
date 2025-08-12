@@ -1,6 +1,6 @@
 {
   "name": "@rbxts/shared-components-flamework",
-  "version": "2.6.5",
+  "version": "2.6.6",
   "description": "This package will allow you to create shared components that will synchronize between server and client. This package is reflex-based, so it is important to know how to work with it to understand how this package works.",
   "main": "out/init.lua",
   "scripts": {
@@ -30,6 +30,7 @@
     "access": "public"
   },
   "devDependencies": {
+    "@rbxts/charm-sync": "^0.3.0",
     "@rbxts/compiler-types": "^3.0.0-types.0",
     "@rbxts/types": "^1.0.813",
     "@typescript-eslint/eslint-plugin": "^6.19.0",
@@ -44,8 +45,8 @@
     "typescript": "^5.2.2"
   },
   "peerDependencies": {
-    "@rbxts/charm": "^0.10.0",
-    "@rbxts/charm-sync": "^0.3.0"
+    "@rbxts/charm": ">=0.10.0",
+    "@rbxts/charm-sync": ">=0.10.0"
   },
   "dependencies": {
     "@flamework/components": "^1.1.0",

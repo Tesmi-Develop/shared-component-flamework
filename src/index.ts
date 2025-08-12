@@ -4,3 +4,4 @@ export { SharedComponentNetwork, ServerToClient, ClientToServer } from "./source
 export { InferSharedComponentState, SharedComponentInfo } from "./types";
 export { Action } from "./source/decorators/action";
 export { Subscribe } from "./source/decorators/subscribe";
+export { MarkHowSharedComponent } from "./source/decorators/mark-shared-component";
