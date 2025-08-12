@@ -557,7 +557,10 @@ abstract class SharedComponent<S = any, A extends object = {}, I extends Instanc
 		this.scheduledSyncConnection?.Disconnect();
 		this.listeners.forEach((unsubscribe) => unsubscribe());
 		this.connectedPlayers.clear();
-		if (this.uniqueId !== "") task.defer(() => SharedComponent.instances.delete(this.uniqueId));
+		if (this.uniqueId !== "") task.defer(() => {
+			if (SharedComponent.instances.get(this.uniqueId) !== this) return;
+			SharedComponent.instances.delete(this.uniqueId);
+		});
 
 		for (const [_, remote] of pairs(this.remotes)) {
 			remote.Destroy();
