@@ -166,12 +166,12 @@ export class SharedComponentHandler implements OnInit {
 
 	private onClientSetup() {
 		remotes._shared_component_dispatch.connect(async (actions, componentInfo) => {
-			const component = await this.waitFoComponent(componentInfo);
+			const component = await this.waitForComponent(componentInfo);
 			if (component !== undefined) this.invokeDispatch(component, actions);
 		});
 
 		remotes._shared_component_remote_event_Client.connect(async (componentInfo, eventName, args) => {
-			const component = await this.waitFoComponent(componentInfo);
+			const component = await this.waitForComponent(componentInfo);
 			if (!component) return;
 
 			const remote = component.__GetRemote(eventName);
@@ -183,24 +183,27 @@ export class SharedComponentHandler implements OnInit {
 		});
 
 		remotes._shared_component_disconnected.connect(async (componentInfo) => {
-			const component = await this.waitFoComponent(componentInfo);
+			const component = await this.waitForComponent(componentInfo);
 			if (!component) return;
 
 			component.__Disconnected();
 		});
 	}
 
-	private async waitFoComponent(id: string) {
+	private async waitForComponent(id: string) {
 		if (SharedComponent.instances.has(id)) return SharedComponent.instances.get(id)!;
 
 		const thread = coroutine.running();
 
-		SharedComponent.onAddedInstances.Connect((component, newId) => {
+		const connection = SharedComponent.onAddedInstances.Connect((component, newId) => {
 			if (id !== newId) return;
 			coroutine.resume(thread, component);
 		});
 
-		return coroutine.yield() as never as SharedComponent;
+		const res = coroutine.yield() as never as SharedComponent;
+		connection.Disconnect();
+
+		return res;
 	}
 
 	private onServerSetup() {
