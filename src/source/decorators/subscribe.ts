@@ -3,8 +3,8 @@ import { SharedComponent } from "../shared-component";
 
 type InferSharedComponentState<T> = T extends SharedComponent<infer S> ? S : never;
 
-export const Subscribe = <T extends SharedComponent<InferSharedComponentState<T>>, R>(
-	selector: (state: InferSharedComponentState<T>) => R,
+export const Subscribe = <T extends SharedComponent<InferSharedComponentState<T>>, R = InferSharedComponentState<T>>(
+	selector: (state: InferSharedComponentState<T>) => R = (state) => state as R,
 ) => {
 	return (
 		target: T,
