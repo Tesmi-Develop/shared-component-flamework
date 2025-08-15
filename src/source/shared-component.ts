@@ -62,7 +62,9 @@ abstract class SharedComponent<S = any, A extends object = {}, I extends Instanc
 	private scheduledSyncConnection?: RBXScriptConnection;
 	private uniqueId = "";
 	private sharedComponentCtor: Constructor<SharedComponent>;
+	private onDoneHydrating = new Signal<[]>();
 	private isDestroyed = false;
+	private isDoneHydrating = false;
 
 	constructor() {
 		super();
@@ -330,8 +332,12 @@ abstract class SharedComponent<S = any, A extends object = {}, I extends Instanc
 	 * @internal
 	 * @hidden
 	 **/
-	public __DispatchFromServer(payload: SyncPayload<{}>) {
+	public async __DispatchFromServer(payload: SyncPayload<{}>) {
 		if (this.isBlockingServerDispatches || this.isDestroyed) return;
+
+		if (payload.type === "patch" && !this.isDoneHydrating) {
+			this.onDoneHydrating.Wait();
+		}
 
 		Charm.batch(() => {
 			if (payload.type === "patch") {
@@ -339,6 +345,8 @@ abstract class SharedComponent<S = any, A extends object = {}, I extends Instanc
 				return;
 			}
 
+			this.onDoneHydrating.Fire();
+			this.isDoneHydrating = true;
 			this.atom(payload.data as S);
 		});
 
@@ -398,6 +406,7 @@ abstract class SharedComponent<S = any, A extends object = {}, I extends Instanc
 		this.isConnected = false;
 		SharedComponent.instances.delete(this.uniqueId);
 		this.uniqueId = "";
+		this.isDoneHydrating = false;
 		this.OnDisconnected();
 	}
 
@@ -562,6 +571,7 @@ abstract class SharedComponent<S = any, A extends object = {}, I extends Instanc
 		this.attributeConnection?.Disconnect();
 		this.playerRemovingConnection?.Disconnect();
 		this.scheduledSyncConnection?.Disconnect();
+		this.onDoneHydrating.Destroy();
 		this.listeners.forEach((unsubscribe) => unsubscribe());
 		this.connectedPlayers.clear();
 		if (this.uniqueId !== "")
@@ -573,6 +583,7 @@ abstract class SharedComponent<S = any, A extends object = {}, I extends Instanc
 		for (const [_, remote] of pairs(this.remotes)) {
 			remote.Destroy();
 		}
+		this.isDoneHydrating = false;
 		this.isDestroyed = true;
 	}
 }

@@ -1,6 +1,6 @@
-import { BaseComponent, Component, Components } from "@flamework/components";
+import { BaseComponent, Components } from "@flamework/components";
 import { AbstractConstructor } from "@flamework/components/out/utility";
-import { Controller, Modding, OnInit, Reflect, Service } from "@flamework/core";
+import { Controller, Modding, OnInit, Service } from "@flamework/core";
 import { SyncPayload } from "@rbxts/charm-sync";
 import { remotes } from "../remotes";
 import { PlayerAction, SharedComponentInfo } from "../types";
@@ -22,19 +22,11 @@ import { GetInstanceWithId, SharedComponent } from "./shared-component";
 })
 export class SharedComponentHandler implements OnInit {
 	private classParentCache = new Map<AbstractConstructor, readonly AbstractConstructor[]>();
-	private polymorphicIds = new Map<AbstractConstructor, readonly string[]>();
 
 	constructor(private components: Components) {}
 
 	/** @hidden */
 	public onInit() {
-		const componentConfigs = Modding.getDecorators<typeof Component>();
-
-		componentConfigs.forEach(({ constructor }) => {
-			if (!constructor) return;
-			this.polymorphicIds.set(constructor, this.getPolymorphicIds(constructor));
-		});
-
 		IsClient && this.onClientSetup();
 		IsServer && this.onServerSetup();
 	}
@@ -53,30 +45,6 @@ export class SharedComponentHandler implements OnInit {
 
 		this.classParentCache.set(ctor, classes);
 		return classes;
-	}
-
-	private getPolymorphicIds(component: AbstractConstructor) {
-		const ids = new Array<string>();
-
-		for (const parentClass of this.getOrderedParents(component)) {
-			const parentId = Reflect.getOwnMetadata<string>(parentClass, "identifier");
-			if (parentId === undefined) continue;
-
-			ids.push(parentId);
-		}
-
-		const implementedList = Reflect.getMetadatas<string[]>(component, "flamework:implements");
-		for (const implemented of implementedList) {
-			for (const id of implemented) {
-				ids.push(id);
-			}
-		}
-
-		return ids;
-	}
-
-	private invokeDispatch(component: SharedComponent, payload: SyncPayload<{}>) {
-		component.__DispatchFromServer(payload);
 	}
 
 	private printInfo(info: SharedComponentInfo) {
@@ -167,12 +135,11 @@ export class SharedComponentHandler implements OnInit {
 	private onClientSetup() {
 		remotes._shared_component_dispatch.connect(async (actions, componentInfo) => {
 			const component = await this.waitForComponent(componentInfo);
-			if (component !== undefined) this.invokeDispatch(component, actions);
+			component.__DispatchFromServer(actions);
 		});
 
 		remotes._shared_component_remote_event_Client.connect(async (componentInfo, eventName, args) => {
 			const component = await this.waitForComponent(componentInfo);
-			if (!component) return;
 
 			const remote = component.__GetRemote(eventName);
 			if (!IsSharedComponentRemoteEvent(remote)) return;
@@ -184,8 +151,6 @@ export class SharedComponentHandler implements OnInit {
 
 		remotes._shared_component_disconnected.connect(async (componentInfo) => {
 			const component = await this.waitForComponent(componentInfo);
-			if (!component) return;
-
 			component.__Disconnected();
 		});
 	}
