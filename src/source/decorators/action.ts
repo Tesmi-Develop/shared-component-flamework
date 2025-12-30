@@ -4,7 +4,7 @@ import { SharedComponent } from "../shared-component";
  * Decorator for creating an Action inside a class producer.
  */
 export const Action = () => {
-	return <S extends object, T extends SharedComponent<S>>(
+	return <S, T extends SharedComponent<S>>(
 		target: T,
 		propertyKey: string,
 		descriptor: TypedPropertyDescriptor<(this: T, ...args: unknown[]) => S>,

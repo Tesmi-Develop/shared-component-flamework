@@ -4,7 +4,7 @@ import { OnStart } from "@flamework/core";
 import { Constructor } from "@flamework/core/out/utility";
 import { Signal } from "@rbxts/beacon";
 import Charm, { atom, Atom, subscribe } from "@rbxts/charm";
-import { SyncPatch, SyncPayload } from "@rbxts/charm-sync";
+import { isNone, SyncPatch, SyncPayload } from "@rbxts/charm-sync";
 import { Players, ReplicatedStorage, RunService } from "@rbxts/services";
 import { remotes } from "../remotes";
 import { PlayerAction, SharedComponentInfo } from "../types";
@@ -50,7 +50,7 @@ abstract class SharedComponent<S = any, A extends object = {}, I extends Instanc
 	/** @client */
 	protected isAutoConnect = true;
 	protected readonly remotes: Record<string, ISharedNetwork> = {};
-	protected atom: Atom<S>;
+	protected readonly atom = atom() as Atom<S>;
 
 	private isConnected = false;
 	private isEnableDevTool = false;
@@ -70,21 +70,11 @@ abstract class SharedComponent<S = any, A extends object = {}, I extends Instanc
 	constructor() {
 		super();
 
-		const localAtom = atom();
-		this.atom = ((state?: S) => {
-			if (state === undefined) {
-				if (localAtom() !== this.state) localAtom(this.state);
-				return this.state;
-			}
-
-			const prevState = this.state;
-			const newState = localAtom(state);
-
-			this.state = state;
-			if (IsServer) this.scheduleSync(prevState as S);
-
-			return newState;
-		}) as Atom<S>;
+		const cleanup = subscribe(this.atom, (state) => {
+			if (IsServer) this.scheduleSync(this.state as S);
+			this.state = state as S;
+		});
+		this.listeners.add(cleanup);
 
 		this.initSharedActions();
 		this.sharedComponentCtor = GetSharedComponentCtor(
@@ -348,7 +338,12 @@ abstract class SharedComponent<S = any, A extends object = {}, I extends Instanc
 
 			this.isDoneHydrating = true;
 			this.onDoneHydrating.Fire();
-			this.atom(payload.data as S);
+
+			if (isNone(payload.data)) {
+				this.atom(undefined as S);
+			} else {
+				this.atom(payload.data as S);
+			}
 		});
 
 		if (!RunService.IsStudio() || !this.isEnableDevTool) return;
@@ -399,7 +394,7 @@ abstract class SharedComponent<S = any, A extends object = {}, I extends Instanc
 	public __GenerateHydrateData = () => {
 		return {
 			type: "init" as const,
-			data: this.state,
+			data: this.state ?? patch.None,
 		};
 	};
 

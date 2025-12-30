@@ -46,8 +46,15 @@ end
 	@param serialize Whether to convert sparse arrays into dictionaries. Defaults to `true`.
 	@returns A patch that can be applied to the previous state.
 ]=]
-local function diff(prevState: { [any]: any }, nextState: { [any]: any }, serialize: boolean?)
+local function diff(prevState: any, nextState: any, serialize: boolean?)
 	serialize = serialize ~= false
+	if prevState ~= nil and nextState == nil then
+		return None
+	end
+
+	if typeof(nextState) ~= typeof(prevState) then
+		return nextState
+	end
 
 	local patches = table.clone(nextState)
 
@@ -79,6 +86,10 @@ end
 	@returns The next state.
 ]=]
 local function apply(state: any, patches: any): any
+	if isNone(patches) then
+		return nil
+	end
+
 	if type(patches) == "table" and patches.__none == "__none" then
 		return nil
 	elseif type(state) ~= "table" or type(patches) ~= "table" then
@@ -106,4 +117,5 @@ return {
 	isNone = isNone,
 	diff = diff,
 	apply = apply,
+	None = None,
 }
